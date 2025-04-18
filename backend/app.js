@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const bodyParser = require('body-parser');
@@ -7,7 +8,7 @@ const Transport = require('winston-transport');
 const net = require('net');
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.APP_PORT || 3000;
 
 class TCPTransport extends Transport {
   constructor(options = {}) {
@@ -79,9 +80,10 @@ app.use((req, res, next) => {
 });
 
 // Conexión a MongoDB
-mongoose.connect('mongodb://127.0.0.1:27017/bookdb')
+mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log('Conectado a MongoDB'))
   .catch(err => console.error('Error al conectar a MongoDB:', err));
+  
 // Rutas
 app.use('/api/books', bookRoutes);
 

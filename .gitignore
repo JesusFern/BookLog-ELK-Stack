@@ -1,7 +1,2 @@
-elasticsearch-9.0.0
-kibana-9.0.0
-logstash-9.0.0
-logs
-password elastic.txt
-CUsersUsuarioDesktopUSCurso
+.env
 node_modules
