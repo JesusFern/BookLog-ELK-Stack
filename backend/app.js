@@ -1,24 +1,12 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const bodyParser = require('body-parser');
-const bookRoutes = require('./routes/books');
+const bookRoutes = require('./routes/bookRoutes');
 const winston = require('winston');
 const { Client } = require('@elastic/elasticsearch');
 
 const app = express();
 const PORT = 3000;
-
-
-const elasticClient = new Client({
-  node: 'https://localhost:9200',
-  auth: {
-    username: 'elastic',
-    password: 'vddE3o3HkoTpk09dQqMO'
-  },
-  tls: {
-    rejectUnauthorized: false // Desactiva la verificación SSL si usas certificados autofirmados
-  }
-});
 
 // Crear índice para libros en Elasticsearch
 const createBookIndex = async () => {
@@ -51,14 +39,16 @@ const createBookIndex = async () => {
 // Logger para Elasticsearch
 const logger = winston.createLogger({
   transports: [
-    new winston.transports.File({
-      filename: './logs/app.log',
+    new winston.transports.Http({
+      host: 'localhost', // Usa 'logstash' si estás en Docker Compose, o 'localhost' si estás fuera de Docker
+      port: 5044,
+      path: '/',
       format: winston.format.json()
     })
   ]
 });
 
-// Middleware
+// Middleware para registrar solicitudes HTTP
 app.use(bodyParser.json());
 app.use((req, res, next) => {
   logger.info({
