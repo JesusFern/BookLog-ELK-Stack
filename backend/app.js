@@ -3,59 +3,78 @@ const mongoose = require('mongoose');
 const bodyParser = require('body-parser');
 const bookRoutes = require('./routes/bookRoutes');
 const winston = require('winston');
-const { Client } = require('@elastic/elasticsearch');
+const Transport = require('winston-transport');
+const net = require('net');
 
 const app = express();
 const PORT = 3000;
 
-// Crear índice para libros en Elasticsearch
-const createBookIndex = async () => {
-    try {
-      const exists = await elasticClient.indices.exists({ index: 'books' });
-      if (!exists) {
-        await elasticClient.indices.create({
-          index: 'books',
-          body: {
-            mappings: {
-              properties: {
-                title: { type: 'text' },
-                author: { type: 'text' },
-                genre: { type: 'keyword' },
-                summary: { type: 'text' },
-                createdAt: { type: 'date' }
-              }
-            }
-          }
-        });
-        console.log('Índice "books" creado en Elasticsearch');
-      }
-    } catch (err) {
-      console.error('Error al crear el índice de libros:', err);
+class TCPTransport extends Transport {
+  constructor(options = {}) {
+    super(options);
+    this.name = 'tcp';
+    this.host = options.host || 'localhost';
+    this.port = options.port || 5044;
+    this.silent = options.silent || false;
+  }
+
+  log(info, callback) {
+    if (this.silent) {
+      return callback(null, true);
     }
-  };
-  
- //   createBookIndex();
+
+    const socket = new net.Socket();
+    socket.connect(this.port, this.host, () => {
+      const message = JSON.stringify(info) + '\n';
+      socket.write(message);
+      socket.end();
+    });
+
+    socket.on('error', (err) => {
+      console.error('Error al enviar log a Logstash:', err);
+    });
+
+    socket.on('close', () => {
+      callback(null, true);
+    });
+  }
+}
+
 
 // Logger para Elasticsearch
 const logger = winston.createLogger({
+  format: winston.format.combine(
+    winston.format.timestamp(),
+    winston.format.json()
+  ),
   transports: [
-    new winston.transports.Http({
-      host: 'localhost', // Usa 'logstash' si estás en Docker Compose, o 'localhost' si estás fuera de Docker
-      port: 5044,
-      path: '/',
-      format: winston.format.json()
+    new winston.transports.Console(),
+    new TCPTransport({
+      host: 'localhost',
+      port: 5044
     })
   ]
 });
-
 // Middleware para registrar solicitudes HTTP
 app.use(bodyParser.json());
 app.use((req, res, next) => {
-  logger.info({
-    method: req.method,
-    url: req.url,
-    timestamp: new Date().toISOString()
+  const start = Date.now();
+  
+  // Captura el final de la respuesta
+  res.on('finish', () => {
+    logger.info({
+      method: req.method,
+      url: req.url,
+      path: req.path,
+      query: req.query,
+      params: req.params,
+      ip: req.ip,
+      user_agent: req.get('user-agent'),
+      status_code: res.statusCode,
+      response_time: Date.now() - start
+    });
   });
+  
   next();
 });
 
