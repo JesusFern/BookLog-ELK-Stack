@@ -31,7 +31,60 @@ const importBooksController = async (req, res) => {
   }
 };
 
+const searchByTitle = async (req, res) => {
+  try {
+    const { title } = req.query;
+    const response = await esClient.search({
+      index: 'books',
+      query: {
+        match: {
+          title: title,
+        },
+      },
+    });
+
+    res.status(200).json(response.hits.hits.map(hit => hit._source));
+  } catch (err) {
+    console.error('❌ Error buscando por título:', err.message);
+    res.status(500).json({ error: 'Error buscando por título.' });
+  }
+};
+
+const multiMatchSearchWithPagination = async (req, res) => {
+  try {
+    const { query, page = 1} = req.query;
+    const size = 10;
+    const response = await esClient.search({
+      index: 'books',
+      from: (page - 1) * size,
+      size: parseInt(size),
+      query: {
+        multi_match: {
+          query: query,
+          fields: ['title', 'author', 'genre', 'summary'],
+        },
+      },
+    });
+
+    const total = response.hits.total.value;
+    const totalPages = Math.ceil(total / size);
+
+    res.status(200).json({
+      total, // Total de documentos
+      page: parseInt(page), // Página actual
+      size: parseInt(size), // Tamaño de la página
+      totalPages, // Total de páginas
+      results: response.hits.hits.map(hit => hit._source), // Resultados de la página actual
+    });
+  } catch (err) {
+    console.error('❌ Error buscando con paginación:', err.message);
+    res.status(500).json({ error: 'Error buscando con paginación.' });
+  }
+};
+
 module.exports = {
   createBook,
   importBooksController,
+  searchByTitle,
+  multiMatchSearchWithPagination
 };
