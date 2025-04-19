@@ -1,6 +1,7 @@
 const Book = require('../models/book');
 const esClient = require('../utils/elasticsearchClient');
-const importBooks = require('../services/importBooks');
+const importBooks = require('../services/importBooksService');
+const { indexBook } = require('../services/elasticService');
 
 // Crear un libro
 const createBook = async (req, res) => {
@@ -8,23 +9,8 @@ const createBook = async (req, res) => {
     const book = new Book(req.body);
     const savedBook = await book.save();
 
-    // Indexar en Elasticsearch
-    await esClient.index({
-      index: 'books',
-      id: savedBook._id.toString(),
-      document: {
-        title: savedBook.title,
-        author: savedBook.author,
-        genre: savedBook.genre,
-        summary: savedBook.summary,
-        language: savedBook.language,
-        price: savedBook.price,
-        format: savedBook.format,
-        coverImageUrl: savedBook.coverImageUrl,
-        downloadFileUrls: savedBook.downloadFileUrls,
-        createdAt: savedBook.createdAt
-      }
-    });
+    // Indexar en Elasticsearch usando el servicio
+    await indexBook(savedBook);
 
     res.status(201).json(savedBook);
   } catch (err) {
