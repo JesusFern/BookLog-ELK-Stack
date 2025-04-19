@@ -3,6 +3,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const bodyParser = require('body-parser');
 const bookRoutes = require('./routes/bookRoutes');
+const elasticRoutes = require('./routes/elasticRoutes');
 const winston = require('winston');
 const Transport = require('winston-transport');
 const net = require('net');
@@ -86,6 +87,8 @@ mongoose.connect(process.env.MONGO_URI)
   
 // Rutas
 app.use('/api/books', bookRoutes);
+app.use('/api/elastic', elasticRoutes);
+
 
 // Iniciar servidor
 app.listen(PORT, () => {
