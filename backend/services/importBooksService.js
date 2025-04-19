@@ -71,12 +71,16 @@ const importBooks = async (shouldDelete) => {
     const promises = []; // Almacena las promesas de las operaciones asincrónicas
 
     fs.createReadStream(path)
-      .pipe(csv({ separator: ';' }))
+      .pipe(csv({
+        separator: ';',
+        mapHeaders: ({ header }) => header.trim().toLowerCase(), // Normaliza las claves del encabezado
+      }))
       .on('data', (row) => {
 
         const promise = (async () => {
           try {
             const formats = getRandomFormats();
+            console.log('Fila leída:', row);
             const bookData = {
               title: row.title || 'Sin título',
               author: row.authors || 'Desconocido / No indicado',
