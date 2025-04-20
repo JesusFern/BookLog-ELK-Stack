@@ -6,7 +6,7 @@ const Book = require('../models/book');
 const { createBooksIndex, indexBook } = require('./elasticBookService'); // Importa las funciones necesarias
 
 // Idiomas válidos
-const LANGUAGES = ['Español', 'Inglés', 'Francés', 'Italiano', 'Japonés'];
+const LANGUAGES = ['Español', 'Inglés'];
 const FORMATS = ['PDF', 'EPUB', 'MOBI'];
 
 // Función para generar formatos aleatorios
