@@ -2,19 +2,22 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const User = require('../models/user');
 const Book = require('../models/book');
+const { createUsersIndex, indexUser, updateUserInElastic } = require('../services/elasticUserService');
 
 const registerUser = async (req, res) => {
   try {
     const { name, email, password } = req.body;
 
-    // Verificar si el usuario ya existe
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).json({ error: 'El correo ya está registrado.' });
     }
 
     const user = new User({ name, email, password });
-    await user.save();
+    const savedUser = await user.save();
+
+    // Indexar el usuario en Elasticsearch
+    await indexUser(savedUser);
 
     res.status(201).json({ message: 'Usuario registrado con éxito.' });
   } catch (err) {
@@ -53,26 +56,33 @@ const addPurchasedBook = async (req, res) => {
       return res.status(401).json({ error: 'No autorizado.' });
     }
 
-    // Verificar el token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const userId = decoded.userId;
 
     const { bookId } = req.body;
 
-    // Verificar si el libro existe
     const book = await Book.findById(bookId);
     if (!book) {
       return res.status(404).json({ error: 'Libro no encontrado.' });
     }
 
-    // Agregar el libro a los libros comprados del usuario
     const user = await User.findById(userId);
     if (!user) {
       return res.status(404).json({ error: 'Usuario no encontrado.' });
     }
 
+    const alreadyPurchased = user.purchasedBooks.some(
+        (purchasedBook) => purchasedBook._id.toString() === bookId
+      );
+      if (alreadyPurchased) {
+        return res.status(400).json({ error: 'El libro ya ha sido comprado por este usuario.' });
+      }
+
     user.purchasedBooks.push(bookId);
-    await user.save();
+    const savedUser = await user.save();
+
+    // Actualizar el índice de Elasticsearch
+    await updateUserInElastic(savedUser);
 
     res.status(200).json({ message: 'Libro comprado con éxito.', purchasedBooks: user.purchasedBooks });
   } catch (err) {

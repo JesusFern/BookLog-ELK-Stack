@@ -1,7 +1,8 @@
 const express = require('express');
-const { syncElasticWithMongo } = require('../controllers/elasticController');
+const { syncElasticWithMongoBooks, syncElasticWithMongoUsers } = require('../controllers/elasticController');
 const router = express.Router();
 
-router.post('/sync-elastic', syncElasticWithMongo);
+router.post('/sync-elastic-books', syncElasticWithMongoBooks);
+router.post('/sync-elastic-users', syncElasticWithMongoUsers);
 
 module.exports = router;
