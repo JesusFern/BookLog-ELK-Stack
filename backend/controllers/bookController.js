@@ -1,7 +1,7 @@
 const Book = require('../models/book');
 const esClient = require('../utils/elasticsearchClient');
 const importBooks = require('../services/importBooksService');
-const { indexBook } = require('../services/elasticService');
+const { indexBook } = require('../services/elasticBookService');
 
 // Crear un libro
 const createBook = async (req, res) => {

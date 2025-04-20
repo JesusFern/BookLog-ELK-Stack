@@ -87,7 +87,7 @@ mongoose.connect(process.env.MONGO_URI)
   
 // Rutas
 app.use('/api/books', bookRoutes);
-app.use('/api/elastic', elasticRoutes);
+app.use('/api/elastic-books', elasticRoutes);
 
 
 // Iniciar servidor

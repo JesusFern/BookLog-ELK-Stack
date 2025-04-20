@@ -2,8 +2,8 @@ require('dotenv').config();
 const fs = require('fs');
 const csv = require('csv-parser');
 const { faker } = require('@faker-js/faker');
-const esClient = require('../utils/elasticsearchClient');
 const Book = require('../models/book');
+const { createBooksIndex, indexBook } = require('./elasticBookService'); // Importa las funciones necesarias
 
 // Idiomas válidos
 const LANGUAGES = ['Español', 'Inglés', 'Francés', 'Italiano', 'Japonés'];
@@ -25,27 +25,12 @@ const generateDownloadUrls = (formats) => {
   return urls;
 };
 
-// Función para eliminar el índice en Elasticsearch
-const deleteIndex = async () => {
-  try {
-    const exists = await esClient.indices.exists({ index: process.env.ELASTIC_INDEX });
-    if (exists) {
-      await esClient.indices.delete({ index: process.env.ELASTIC_INDEX });
-      console.log(`🗑️ Índice "${process.env.ELASTIC_INDEX}" eliminado.`);
-    } else {
-      console.log(`ℹ️ Índice "${process.env.ELASTIC_INDEX}" no existe, no se necesita eliminar.`);
-    }
-  } catch (err) {
-    console.error('❌ Error eliminando el índice:', err.message);
-  }
-};
-
 const importBooks = async (shouldDelete) => {
   if (shouldDelete) {
     console.log('🗑️ Eliminando datos existentes...');
 
     // Elimina el índice en Elasticsearch si existe
-    await deleteIndex();
+    await createBooksIndex(); // Usa la función centralizada para recrear el índice
 
     // Elimina todos los documentos de la colección `books` en MongoDB
     try {
@@ -98,24 +83,8 @@ const importBooks = async (shouldDelete) => {
             const mongoBook = new Book(bookData);
             const savedBook = await mongoBook.save();
 
-            // Indexar en Elasticsearch
-            await esClient.index({
-              index: process.env.ELASTIC_INDEX,
-              id: savedBook._id.toString(),
-              document: {
-                title: savedBook.title,
-                author: savedBook.author,
-                genre: savedBook.genre,
-                summary: savedBook.summary,
-                language: savedBook.language,
-                price: savedBook.price,
-                format: savedBook.format,
-                coverImageUrl: savedBook.coverImageUrl,
-                publishedYear: savedBook.publishedYear,
-                numPages: savedBook.numPages,
-                createdAt: savedBook.createdAt,
-              },
-            });
+            // Indexar en Elasticsearch usando la función centralizada
+            await indexBook(savedBook);
 
             totalImported++; // Incrementa el contador de libros importados
           } catch (err) {
