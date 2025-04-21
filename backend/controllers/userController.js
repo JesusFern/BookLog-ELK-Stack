@@ -2,7 +2,9 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const User = require('../models/user');
 const Book = require('../models/book');
-const { createUsersIndex, indexUser, updateUserInElastic } = require('../services/elasticUserService');
+const { indexUser, updateUserInElastic } = require('../services/elasticUserService');
+const populateUsers = require('../utils/populateUsers');
+
 
 const registerUser = async (req, res) => {
   try {
@@ -91,8 +93,20 @@ const addPurchasedBook = async (req, res) => {
   }
 };
 
+const populateUsersController = async (req, res) => {
+  try {
+    const { shouldDelete } = req.body;
+    await populateUsers(shouldDelete);
+    res.status(200).json({ message: 'Usuarios creados y poblados con éxito.' });
+  } catch (err) {
+    console.error('❌ Error poblando usuarios:', err.message);
+    res.status(500).json({ error: 'Error poblando usuarios.' });
+  }
+};
+
 module.exports = {
   registerUser,
   loginUser,
   addPurchasedBook,
+  populateUsersController,
 };

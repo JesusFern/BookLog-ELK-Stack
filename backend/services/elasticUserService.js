@@ -112,8 +112,8 @@ const updateUserInElastic = async (user) => {
   };
 
 module.exports = {
-  createUsersIndex,
   indexUser,
   bulkIndexUsers,
-  updateUserInElastic
+  updateUserInElastic,
+  createUsersIndex
 };
