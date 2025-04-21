@@ -8,9 +8,11 @@ const userRoutes = require('./routes/userRoutes');
 const winston = require('winston');
 const Transport = require('winston-transport');
 const net = require('net');
+const cors = require('cors');
 
 const app = express();
 const PORT = process.env.APP_PORT || 3000;
+app.use(cors());
 
 class TCPTransport extends Transport {
   constructor(options = {}) {
