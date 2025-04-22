@@ -1,4 +1,5 @@
 const esClient = require('../utils/elasticsearchClient');
+const Book = require('../models/book');
 
 // Función para indexar un libro en Elasticsearch
 const indexBook = async (book) => {
@@ -9,7 +10,7 @@ const indexBook = async (book) => {
       document: {
         title: book.title,
         title_suggest: {
-          input: [book.title], // Términos para autocompletado
+          input: [book.title],
           weight: 10,
         },
         author: book.author,
@@ -22,6 +23,7 @@ const indexBook = async (book) => {
         downloadFileUrls: book.downloadFileUrls,
         publishedYear: book.publishedYear,
         numPages: book.numPages,
+        purchasedCount: book.purchasedCount, 
         createdAt: book.createdAt,
       },
     });
@@ -53,6 +55,7 @@ const bulkIndexBooks = async (books) => {
         downloadFileUrls: book.downloadFileUrls,
         publishedYear: book.publishedYear,
         numPages: book.numPages,
+        purchasedCount: book.purchasedCount,
         createdAt: book.createdAt,
       },
     ]);
@@ -92,7 +95,7 @@ const createBooksIndex = async () => {
         mappings: {
           properties: {
             title: { type: 'text' },
-            title_suggest: { type: 'completion' }, // Campo para autocompletado
+            title_suggest: { type: 'completion' },
             author: { type: 'text' },
             genre: { type: 'text' },
             summary: { type: 'text' },
@@ -110,6 +113,7 @@ const createBooksIndex = async () => {
             publishedYear: { type: 'integer' },
             numPages: { type: 'integer' },
             createdAt: { type: 'date' },
+            purchasedCount: { type: 'integer'},
           },
         },
       });
@@ -121,8 +125,46 @@ const createBooksIndex = async () => {
   }
 };
 
+const updateBookInElastic = async (bookId) => {
+  try {
+    // Obtener el libro actualizado desde MongoDB
+    const updatedBook = await Book.findById(bookId);
+
+    if (!updatedBook) {
+      throw new Error(`Libro con ID ${bookId} no encontrado en MongoDB.`);
+    }
+
+    console.log(`🔄 Actualizando libro ${bookId} en Elasticsearch con purchasedCount:`, updatedBook.purchasedCount);
+
+    // Actualizar específicamente el campo purchasedCount
+    await esClient.update({
+      index: 'books',
+      id: bookId,
+      doc: {
+        purchasedCount: updatedBook.purchasedCount
+      },
+      refresh: true // Forzar actualización inmediata
+    });
+
+    console.log(`✅ Campo purchasedCount actualizado para el libro ${bookId} en Elasticsearch.`);
+
+    // Verificar la actualización
+    const esBook = await esClient.get({
+      index: 'books',
+      id: bookId
+    });
+    
+    console.log(`📊 Valor actual de purchasedCount en Elasticsearch para libro ${bookId}:`, 
+      esBook._source.purchasedCount);
+
+  } catch (err) {
+    console.error(`❌ Error actualizando el libro en Elasticsearch con ID ${bookId}:`, err.message);
+    throw err;
+  }
+};
 module.exports = {
   indexBook,
   createBooksIndex,
   bulkIndexBooks,
+  updateBookInElastic
 };

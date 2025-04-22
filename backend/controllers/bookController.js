@@ -190,6 +190,26 @@ const getBookById = async (req, res) => {
   }
 }
 
+const getTopBooks = async (req, res) => {
+  try {
+    const response = await esClient.search({
+      index: 'books',
+      size: 3,
+      sort: [
+        { purchasedCount: { order: 'desc' } }
+      ],
+      _source: ['title', 'author', 'purchasedCount'],
+    });
+
+    const topBooks = response.hits.hits.map((hit) => hit._source);
+
+    res.status(200).json(topBooks);
+  } catch (err) {
+    console.error('❌ Error obteniendo los libros más populares:', err.message);
+    res.status(500).json({ error: 'Error obteniendo los libros más populares.' });
+  }
+};
+
 module.exports = {
   createBook,
   importBooksController,
@@ -201,4 +221,5 @@ module.exports = {
   fuzzySearchByTitle,
   getBooks,
   getBookById,
+  getTopBooks
 };
