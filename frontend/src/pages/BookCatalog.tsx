@@ -108,7 +108,7 @@ const BookCatalog = () => {
     <CatalogWrapper>
       <Grid>
         {currentBooks.map(book => (
-          <BookCard to={`/libro/${book._id}`} key={book._id}>
+          <BookCard to={`/book/${book._id}`} key={book._id}>
             {book.coverImageUrl && <BookImage src={book.coverImageUrl} alt={book.title} />}
             <h3>{book.title}</h3>
             <p><strong>Autor:</strong> {book.author}</p>
