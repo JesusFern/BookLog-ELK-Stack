@@ -164,6 +164,32 @@ const fuzzySearchByTitle = async (req, res) => {
   }
 };
 
+
+const getBooks = async (req, res) => {
+  try {
+    const books = await Book.find();
+    res.status(200).json(books);
+  } catch (err) {
+    console.error('❌ Error obteniendo libros:', err.message);
+    res.status(500).json({ error: 'Error obteniendo libros.' });
+  }
+}
+
+
+const getBookById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const book = await Book.findById(id);
+    if (!book) {
+      return res.status(404).json({ error: 'Libro no encontrado.' });
+    }
+    res.status(200).json(book);
+  } catch (err) {
+    console.error('❌ Error obteniendo libro por ID:', err.message);
+    res.status(500).json({ error: 'Error obteniendo libro por ID.' });
+  }
+}
+
 module.exports = {
   createBook,
   importBooksController,
@@ -173,4 +199,6 @@ module.exports = {
   searchByPriceRange,
   multiMatchSearchWithPagination,
   fuzzySearchByTitle,
+  getBooks,
+  getBookById,
 };
