@@ -18,7 +18,8 @@ const bookSchema = new mongoose.Schema({
     EPUB: { type: String },
     MOBI: { type: String }
   },
-  publishedYear: { type: Number }, 
+  publishedYear: { type: Number },
+  purchasedCount: { type: Number, default: 0 }, 
   numPages: { type: Number },
   createdAt: { type: Date, default: Date.now }
 });

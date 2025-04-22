@@ -9,7 +9,8 @@ const {
     searchByPriceRange,
     fuzzySearchByTitle,
     getBooks,
-    getBookById
+    getBookById,
+    getTopBooks
 } = require('../controllers/bookController');
 
 const router = express.Router();
@@ -28,6 +29,9 @@ router.get('/search/price-range', searchByPriceRange);
 router.get('/search/pagination', multiMatchSearchWithPagination);
 router.get('/search/fuzzy-title', fuzzySearchByTitle);
 router.get('/books', getBooks);
+router.get('/top-books', getTopBooks);
 router.get('/:id', getBookById);
+
+
 
 module.exports = router;

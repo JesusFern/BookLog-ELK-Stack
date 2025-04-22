@@ -3,6 +3,7 @@ const bcrypt = require('bcrypt');
 const User = require('../models/user');
 const Book = require('../models/book');
 const { indexUser, updateUserInElastic } = require('../services/elasticUserService');
+const { updateBookInElastic } = require('../services/elasticBookService');
 const populateUsers = require('../utils/populateUsers');
 
 
@@ -83,8 +84,12 @@ const addPurchasedBook = async (req, res) => {
     user.purchasedBooks.push(bookId);
     const savedUser = await user.save();
 
-    // Actualizar el índice de Elasticsearch
+    // Actualizar los índices de Elasticsearch
     await updateUserInElastic(savedUser);
+    book.purchasedCount = book.purchasedCount ? book.purchasedCount + 1 : 1;
+    await book.save();
+    console.log(book.purchasedCount)
+    await updateBookInElastic(bookId);
 
     res.status(200).json({ message: 'Libro comprado con éxito.', purchasedBooks: user.purchasedBooks });
   } catch (err) {
