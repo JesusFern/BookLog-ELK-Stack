@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import styled from 'styled-components';
 import { API_BASE_URL } from '../config';
 import { Link } from 'react-router-dom';
+import Header from '../components/Header';
 
 interface Book {
   _id: string;
@@ -80,7 +81,7 @@ const PageButton = styled.button<{ disabled?: boolean }>`
 `;
 
 const BookCatalog = () => {
-  const [books, setBooks] = useState<Book[]>([]);
+  const [books, setBooks] = useState<any[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const booksPerPage = 20;
 
@@ -105,29 +106,32 @@ const BookCatalog = () => {
   };
 
   return (
-    <CatalogWrapper>
-      <Grid>
-        {currentBooks.map(book => (
-          <BookCard to={`/book/${book._id}`} key={book._id}>
-            {book.coverImageUrl && <BookImage src={book.coverImageUrl} alt={book.title} />}
-            <h3>{book.title}</h3>
-            <p><strong>Autor:</strong> {book.author}</p>
-            <p><strong>Género:</strong> {book.genre}</p>
-            <p><strong>Precio:</strong> ${book.price.toFixed(2)}</p>
-          </BookCard>
-        ))}
-      </Grid>
+    <>
+      <Header />
+      <CatalogWrapper>
+        <Grid>
+          {currentBooks.map(book => (
+            <BookCard to={`/book/${book._id}`} key={book._id}>
+              {book.coverImageUrl && <BookImage src={book.coverImageUrl} alt={book.title} />}
+              <h3>{book.title}</h3>
+              <p><strong>Autor:</strong> {book.author}</p>
+              <p><strong>Género:</strong> {book.genre}</p>
+              <p><strong>Precio:</strong> ${book.price.toFixed(2)}</p>
+            </BookCard>
+          ))}
+        </Grid>
 
-      <Pagination>
-        <PageButton onClick={prevPage} disabled={currentPage === 1}>
-          Anterior
-        </PageButton>
-        <span>Página {currentPage} de {totalPages}</span>
-        <PageButton onClick={nextPage} disabled={currentPage === totalPages}>
-          Siguiente
-        </PageButton>
-      </Pagination>
-    </CatalogWrapper>
+        <Pagination>
+          <PageButton onClick={prevPage} disabled={currentPage === 1}>
+            Anterior
+          </PageButton>
+          <span>Página {currentPage} de {totalPages}</span>
+          <PageButton onClick={nextPage} disabled={currentPage === totalPages}>
+            Siguiente
+          </PageButton>
+        </Pagination>
+      </CatalogWrapper>
+    </>
   );
 };
 

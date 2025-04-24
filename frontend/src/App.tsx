@@ -6,6 +6,8 @@ import LoginForm from './components/LoginForm';
 import RegisterForm from './components/RegisterForm';
 import BookCatalog from './pages/BookCatalog';
 import BookDetail from './pages/BookDetail';
+import Cart from './pages/Cart';
+import UserProfile from './pages/UserProfile';
 
 function App() {
   return (
@@ -16,7 +18,8 @@ function App() {
         <Route path="/register" element={<RegisterForm />} />
         <Route path="/catalog" element={<BookCatalog />} />
         <Route path="/book/:id" element={<BookDetail />} />
-
+        <Route path="/cart" element={<Cart />} />
+        <Route path="/user" element={<UserProfile />} />
       </Routes>
     </Router>
   );

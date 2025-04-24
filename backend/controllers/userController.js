@@ -109,9 +109,33 @@ const populateUsersController = async (req, res) => {
   }
 };
 
+
+const userDetails = async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1]; // Obtener el token del header Authorization
+    if (!token) {
+      return res.status(401).json({ error: 'No autorizado.' });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const userId = decoded.userId;
+
+    const user = await User.findById(userId); // No es necesario hacer populate('purchasedBooks') aquí si no lo necesitas
+    if (!user) {
+      return res.status(404).json({ error: 'Usuario no encontrado.' });
+    }
+
+    res.status(200).json({ user });
+  } catch (err) {
+    console.error('❌ Error obteniendo detalles del usuario:', err.message);
+    res.status(500).json({ error: 'Error obteniendo detalles del usuario.' });
+  }
+};
+
 module.exports = {
   registerUser,
   loginUser,
   addPurchasedBook,
   populateUsersController,
+  userDetails,
 };

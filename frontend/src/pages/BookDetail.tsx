@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import styled from 'styled-components';
 import { API_BASE_URL } from '../config';
+import Header from '../components/Header';
 
 const DetailWrapper = styled.div`
   max-width: 800px;
@@ -34,18 +35,21 @@ const BookDetail = () => {
   if (!book) return <p style={{ textAlign: 'center' }}>Cargando...</p>;
 
   return (
-    <DetailWrapper>
-      {book.coverImageUrl && <CoverImage src={book.coverImageUrl} alt={book.title} />}
-      <h2>{book.title}</h2>
-      <p><strong>Autor:</strong> {book.author}</p>
-      <p><strong>Género:</strong> {book.genre}</p>
-      <p><strong>Idioma:</strong> {book.language}</p>
-      <p><strong>Año de publicación:</strong> {book.publishedYear}</p>
-      <p><strong>Número de páginas:</strong> {book.numPages}</p>
-      <p><strong>Precio:</strong> ${book.price.toFixed(2)}</p>
-      <p><strong>Resumen:</strong> {book.summary || 'No disponible'}</p>
-      <p><strong>Formatos disponibles:</strong> {book.format.join(', ')}</p>
-    </DetailWrapper>
+    <>
+      <Header />
+      <DetailWrapper>
+        {book.coverImageUrl && <CoverImage src={book.coverImageUrl} alt={book.title} />}
+        <h2>{book.title}</h2>
+        <p><strong>Autor:</strong> {book.author}</p>
+        <p><strong>Género:</strong> {book.genre}</p>
+        <p><strong>Idioma:</strong> {book.language}</p>
+        <p><strong>Año de publicación:</strong> {book.publishedYear}</p>
+        <p><strong>Número de páginas:</strong> {book.numPages}</p>
+        <p><strong>Precio:</strong> ${book.price.toFixed(2)}</p>
+        <p><strong>Resumen:</strong> {book.summary || 'No disponible'}</p>
+        <p><strong>Formatos disponibles:</strong> {book.format.join(', ')}</p>
+      </DetailWrapper>
+    </>
   );
 };
 

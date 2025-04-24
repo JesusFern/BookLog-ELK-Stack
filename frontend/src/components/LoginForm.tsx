@@ -14,12 +14,17 @@ const LoginForm = () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password }),
     });
-    const data = await response.json();
-    console.log(data);
 
-    // Redirigir si el login fue exitoso
+    const data = await response.json();
+
     if (response.ok) {
+      const { token } = data;
+      console.log(data);
+      localStorage.setItem('token', token);
       navigate('/catalog');
+    } else {
+      const error = await response.json();
+      console.error('Error de inicio de sesión:', error);
     }
   };
 
