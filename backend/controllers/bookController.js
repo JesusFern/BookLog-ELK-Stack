@@ -121,7 +121,7 @@ const multiMatchSearchWithPagination = async (req, res) => {
       query: {
         multi_match: {
           query: query,
-          fields: ['title', 'author', 'genre', 'summary'],
+          fields: ['title^4', 'author^3', 'genre^2', 'summary'],
         },
       },
     });
@@ -130,11 +130,11 @@ const multiMatchSearchWithPagination = async (req, res) => {
     const totalPages = Math.ceil(total / size);
 
     res.status(200).json({
-      total, // Total de documentos
-      page: parseInt(page), // Página actual
-      size: parseInt(size), // Tamaño de la página
-      totalPages, // Total de páginas
-      results: response.hits.hits.map(hit => hit._source), // Resultados de la página actual
+      total,
+      page: parseInt(page),
+      size: parseInt(size),
+      totalPages,
+      results: response.hits.hits.map(hit => hit._source),
     });
   } catch (err) {
     console.error('❌ Error buscando con paginación:', err.message);
