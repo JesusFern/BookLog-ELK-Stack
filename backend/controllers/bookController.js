@@ -110,10 +110,11 @@ const searchByPriceRange = async (req, res) => {
   }
 };
 
-const multiMatchSearchWithPagination = async (req, res) => {
+const multiMatchFuzzySearch = async (req, res) => {
   try {
-    const { query, page = 1} = req.query;
+    const { query, page = 1 } = req.query;
     const size = 10;
+
     const response = await esClient.search({
       index: 'books',
       from: (page - 1) * size,
@@ -121,9 +122,12 @@ const multiMatchSearchWithPagination = async (req, res) => {
       query: {
         multi_match: {
           query: query,
-          fields: ['title^4', 'author^3', 'genre^2', 'summary'],
-        },
-      },
+          fields: ['title^4', 'author^3', 'genre^2', 'summary^1'],
+          fuzziness: 'AUTO',
+          type: 'best_fields', 
+          operator: 'and'
+        }
+      }
     });
 
     const total = response.hits.total.value;
@@ -134,11 +138,11 @@ const multiMatchSearchWithPagination = async (req, res) => {
       page: parseInt(page),
       size: parseInt(size),
       totalPages,
-      results: response.hits.hits.map(hit => hit._source),
+      results: response.hits.hits.map((hit) => hit._source),
     });
   } catch (err) {
-    console.error('❌ Error buscando con paginación:', err.message);
-    res.status(500).json({ error: 'Error buscando con paginación.' });
+    console.error('❌ Error en búsqueda combinada multi_match y fuzzy:', err.message);
+    res.status(500).json({ error: 'Error en búsqueda combinada multi_match y fuzzy.' });
   }
 };
 
@@ -210,6 +214,34 @@ const getTopBooks = async (req, res) => {
   }
 };
 
+const getRelatedBooks = async (req, res) => {
+  try {
+    const { bookId } = req.params;
+
+    const response = await esClient.search({
+      index: 'books',
+      query: {
+        more_like_this: {
+          fields: ['genre^3','author^2', 'summary'],
+          like: [
+            { _id: bookId }
+          ],
+          min_term_freq: 2,
+          max_query_terms: 12
+        }
+      },
+      size: 5
+    });
+
+    const relatedBooks = response.hits.hits.map((hit) => hit._source);
+
+    res.status(200).json(relatedBooks);
+  } catch (err) {
+    console.error('❌ Error obteniendo libros relacionados:', err.message);
+    res.status(500).json({ error: 'Error obteniendo libros relacionados.' });
+  }
+};
+
 module.exports = {
   createBook,
   importBooksController,
@@ -217,9 +249,10 @@ module.exports = {
   searchByAuthor,
   searchByGenre,
   searchByPriceRange,
-  multiMatchSearchWithPagination,
+  multiMatchFuzzySearch,
   fuzzySearchByTitle,
   getBooks,
   getBookById,
-  getTopBooks
+  getTopBooks,
+  getRelatedBooks
 };
