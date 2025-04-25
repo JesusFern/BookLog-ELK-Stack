@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
-import { ArrowLeft, ShoppingCart, User, Home } from 'lucide-react';
+import { ShoppingCart, User, Home } from 'lucide-react';
 
 const HeaderWrapper = styled.header`
   display: flex;
@@ -33,11 +33,6 @@ const IconButton = styled.button`
   align-items: center;
 `;
 
-const BackButton = styled(IconButton)`
-  padding: 0.5rem;
-  border-radius: 50%;
-`;
-
 const Header = () => {
   const navigate = useNavigate();
 
@@ -48,11 +43,6 @@ const Header = () => {
         <IconButton title="Volver al Catálogo" onClick={() => navigate('/catalog')}>
           <Home />
         </IconButton>
-        
-        {/* Botón de "Volver" */}
-        <BackButton title="Volver" onClick={() => navigate(-1)}>
-          <ArrowLeft />
-        </BackButton>
       </LeftSection>
       
       <RightSection>

@@ -19,7 +19,7 @@ const RegisterForm = () => {
     console.log(data);
 
     if (response.ok) {
-      navigate('/catalog');
+      navigate('/login');
     }
   };
 

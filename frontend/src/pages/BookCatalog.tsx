@@ -80,6 +80,8 @@ const PageButton = styled.button<{ disabled?: boolean }>`
   opacity: ${({ disabled }) => (disabled ? 0.6 : 1)};
 `;
 
+// Dentro de BookCatalog.tsx (reemplaza el contenido del componente BookCatalog)
+
 const BookCatalog = () => {
   const [books, setBooks] = useState<any[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
@@ -105,18 +107,49 @@ const BookCatalog = () => {
     if (currentPage > 1) setCurrentPage(prev => prev - 1);
   };
 
+  const handleAddToCart = async (book: Book) => {
+    const token = localStorage.getItem('token');
+  
+    if (!token) {
+      alert('Debes iniciar sesión para añadir libros al carrito.');
+      return;
+    }
+  
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/users/cart/add`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ bookId: book._id }),
+      });
+  
+      const data = await response.json();
+  
+      if (response.ok) {
+        alert('✅ Libro añadido al carrito.');
+      } else {
+        console.error('❌ Backend respondió con error:', data);
+      }
+    } catch (err: any) {
+      alert(`❌ Error: ${err.message || 'Algo salió mal'}`);
+    }
+  };
+
   return (
     <>
       <Header />
       <CatalogWrapper>
         <Grid>
           {currentBooks.map(book => (
-            <BookCard to={`/book/${book._id}`} key={book._id}>
+            <BookCard to={`/book/${book._id}`} key={book._id} onClick={(e) => e.preventDefault()}>
               {book.coverImageUrl && <BookImage src={book.coverImageUrl} alt={book.title} />}
               <h3>{book.title}</h3>
               <p><strong>Autor:</strong> {book.author}</p>
               <p><strong>Género:</strong> {book.genre}</p>
               <p><strong>Precio:</strong> ${book.price.toFixed(2)}</p>
+              <button onClick={() => handleAddToCart(book)}>Añadir al carrito</button>
             </BookCard>
           ))}
         </Grid>

@@ -1,7 +1,8 @@
 // src/pages/Cart.tsx
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import styled from 'styled-components';
 import Header from '../components/Header';
+import { API_BASE_URL } from '../config';
 
 const CartWrapper = styled.div`
   padding: 2rem;
@@ -28,6 +29,11 @@ const CartItemImage = styled.img`
 const CartDetails = styled.div`
   display: flex;
   flex-direction: column;
+
+  p {
+    margin: 0.3rem 0; /* Reduce el espacio vertical */
+    line-height: 1.2;
+  }
 `;
 
 const CartButton = styled.button`
@@ -42,23 +48,31 @@ const CartButton = styled.button`
 `;
 
 const Cart = () => {
-  // Suponiendo que los libros en el carrito están en el estado local
-  const [cartItems, setCartItems] = useState([
-    {
-      _id: '1',
-      title: 'Libro 1',
-      author: 'Autor 1',
-      price: 20,
-      coverImageUrl: 'https://via.placeholder.com/100x150',
-    },
-    {
-      _id: '2',
-      title: 'Libro 2',
-      author: 'Autor 2',
-      price: 15,
-      coverImageUrl: 'https://via.placeholder.com/100x150',
-    },
-  ]);
+  const [cartItems, setCartItems] = useState<any[]>([]);
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      fetch(`${API_BASE_URL}/api/users/cart`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        }
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.cart) {
+            setCartItems(data.cart);
+            console.log('🛒 Carrito:', data.cart);
+          } else {
+            console.error('No se encontró el usuario');
+          }
+        })
+        .catch(err => {
+          console.error('Error al cargar el carrito:', err);
+        });
+    }
+  }, []);
 
   return (
     <>
@@ -73,8 +87,9 @@ const Cart = () => {
                 <CartItemImage src={item.coverImageUrl} alt={item.title} />
                 <CartDetails>
                 <h3>{item.title}</h3>
-                <p>Autor: {item.author}</p>
-                <p>Precio: ${item.price}</p>
+                <p><strong>Autor:</strong> {item.author}</p>
+                <p><strong>Precio:</strong> ${item.price.toFixed(2)}</p>
+                <p><strong>Formatos disponibles:</strong> {item.format.join(', ')}</p>
                 </CartDetails>
             </CartItem>
             ))
