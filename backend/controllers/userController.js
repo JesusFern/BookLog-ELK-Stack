@@ -209,6 +209,17 @@ const addItemCart = async (req, res) => {
   }
 }
 
+
+const getTotalUsers = async (req, res) => {
+  try {
+    const totalUsers = await User.countDocuments();
+    res.status(200).json({ totalUsers });
+  } catch (err) {
+    console.error('❌ Error obteniendo el total de usuarios:', err.message);
+    res.status(500).json({ error: 'Error obteniendo el total de usuarios.' });
+  }
+};
+
 module.exports = {
   registerUser,
   loginUser,
@@ -217,4 +228,5 @@ module.exports = {
   userDetails,
   getCart,
   addItemCart,
+  getTotalUsers,
 };

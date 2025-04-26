@@ -1,5 +1,5 @@
 const express = require('express');
-const { registerUser, loginUser, addPurchasedBook, populateUsersController, userDetails, getCart, addItemCart } = require('../controllers/userController');
+const { registerUser, loginUser, addPurchasedBook, populateUsersController, userDetails, getCart, addItemCart, getTotalUsers } = require('../controllers/userController');
 
 const router = express.Router();
 
@@ -12,5 +12,6 @@ router.post('/cart/add', addItemCart);
 
 router.get('/', userDetails)
 router.get('/cart', getCart);
+router.get('/total-users', getTotalUsers);
 
 module.exports = router;

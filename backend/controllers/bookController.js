@@ -3,6 +3,7 @@ const esClient = require('../utils/elasticsearchClient');
 const importBooks = require('../services/importBooksService');
 const { indexBook } = require('../services/elasticBookService');
 const bookService = require('../services/bookService');
+const { exec } = require('child_process');
 
 // Crear un libro
 const createBook = async (req, res) => {
@@ -352,6 +353,53 @@ const searchWithFilters = async (req, res) => {
     res.status(500).json({ error: 'Error en búsqueda con filtros.' });
   }
 };
+
+
+const getTotalBooks = async (req, res) => {
+  try {
+    const totalBooks = await Book.countDocuments();
+    console.log('📚 Total de libros:', totalBooks);
+    res.status(200).json({ totalBooks });
+  } catch (err) {
+    console.error('❌ Error obteniendo el total de libros:', err.message);
+    res.status(500).json({ error: 'Error obteniendo el total de libros.' });
+  }
+};
+
+
+const simulateBuy = async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1]; // Obtener el token del header Authorization
+    if (!token) {
+      return res.status(401).json({ error: 'No autorizado.' });
+    }
+
+    const jwt = require('jsonwebtoken');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    if (!decoded.isAdmin) {
+      return res.status(403).json({ error: 'Acceso denegado. No eres administrador.' });
+    }
+
+    exec('node ./scripts/simulateBuy.js', (error, stdout, stderr) => {
+      if (error) {
+        console.error('❌ Error ejecutando simulateBuy.js:', error.message);
+        return res.status(500).json({ error: 'Error ejecutando el script.' });
+      }
+
+      if (stderr) {
+        console.error('⚠️ stderr:', stderr);
+      }
+
+      console.log('✅ Script ejecutado correctamente:', stdout);
+      res.status(200).json({ message: 'Simulación de compra completada.', output: stdout });
+    });
+  
+  } catch (err) {
+    console.error('❌ Error simulando compra:', err.message);
+    res.status(500).json({ error: 'Error simulando compra.' });
+  }
+}
+
 module.exports = {
   createBook,
   importBooksController,
@@ -361,5 +409,7 @@ module.exports = {
   getTopBooks,
   getRelatedBooks,
   getSuggestions,
-  searchWithFilters
+  searchWithFilters,
+  getTotalBooks,
+  simulateBuy,
 };

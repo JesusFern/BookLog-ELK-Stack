@@ -35,7 +35,7 @@ const simulateBuy = async () => {
 
       try {
         await axios.post(
-          'http://localhost:5000/api/users/purchase',
+          'http://localhost:3000/api/users/purchase',
           { bookId: randomBook._id },
           {
             headers: {

@@ -1,10 +1,24 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Wrapper, Title, Button } from './AuthFormWrapper';
 import { API_BASE_URL } from '../config';
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
+  const [totalUsers, setTotalUsers] = useState<number>(0);
+  const [totalBooks, setTotalBooks] = useState<number>(0);
+
+  useEffect(() => {
+      fetch(`${API_BASE_URL}/api/books/total-books`)
+        .then(res => res.json())
+        .then(data => setTotalBooks(data.totalBooks))
+        .catch(err => console.error('Error al cargar el número de libros:', err));
+  
+      fetch(`${API_BASE_URL}/api/users/total-users`)
+        .then(res => res.json())
+        .then(data => setTotalUsers(data.totalUsers))
+        .catch(err => console.error('Error al cargar el número de usuarios:', err));
+    }, []);
 
   const populateUsers = async () => {
     const token = localStorage.getItem('token');
@@ -125,7 +139,35 @@ const AdminDashboard = () => {
       alert('Error al sincronizar usuarios.');
     }
   }
-    
+
+  const simulateBuy = async () => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      alert('No autorizado.');
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/books/simulate-buy`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Error al simular compra');
+      }
+
+      const data = await response.json();
+      console.log('✅ Compra simulada:', data);
+      alert('Compra simulada correctamente.');
+    } catch (err: any) {
+      console.error('❌ Error simulando compre:', err.message);
+      alert('Error al simular la compra.');
+    }
+  }
 
   return (
     <Wrapper>
@@ -147,9 +189,28 @@ const AdminDashboard = () => {
         Sincronizar Usuarios en Elastic con MongoDB
       </Button>
 
+      <Button onClick={simulateBuy} style={{ marginBottom: '10px' }}>
+        Simular Compra de Libros Aleatorios
+      </Button>
+
       <Button onClick={() => navigate('/catalog')}>
         Ir al Catálogo
       </Button>
+
+      <div style={{ height: '2rem' }} />
+
+      <div style={{
+        padding: '1rem',
+        marginBottom: '2rem',
+        border: '1px solid #ccc',
+        borderRadius: '12px',
+        backgroundColor: '#f9f9f9',
+        textAlign: 'center'
+      }}>
+        <h3>📊 Estadísticas</h3>
+        <p><strong>Usuarios:</strong> {totalUsers}</p>
+        <p><strong>Libros:</strong> {totalBooks}</p>
+      </div>
     </Wrapper>
   );
 };
