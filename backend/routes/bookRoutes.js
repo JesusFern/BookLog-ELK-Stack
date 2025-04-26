@@ -7,7 +7,8 @@ const {
     getBookById,
     getTopBooks,
     getRelatedBooks,
-    getSuggestions
+    getSuggestions,
+    searchWithFilters
 } = require('../controllers/bookController');
 
 const router = express.Router();
@@ -23,6 +24,7 @@ router.get('/search/pagination', multiMatchFuzzySearch);
 router.get('/books', getBooks);
 router.get('/top-books', getTopBooks);
 router.get('/suggestions', getSuggestions);
+router.get('/search/filters', searchWithFilters);
 
 router.get('/related/:bookId', getRelatedBooks);
 router.get('/:id', getBookById);

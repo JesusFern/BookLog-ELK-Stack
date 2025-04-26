@@ -2,6 +2,7 @@ const Book = require('../models/book');
 const esClient = require('../utils/elasticsearchClient');
 const importBooks = require('../services/importBooksService');
 const { indexBook } = require('../services/elasticBookService');
+const bookService = require('../services/bookService');
 
 // Crear un libro
 const createBook = async (req, res) => {
@@ -34,7 +35,7 @@ const importBooksController = async (req, res) => {
 const multiMatchFuzzySearch = async (req, res) => {
   try {
     const { query, page = 1 } = req.query;
-    const size = 100;
+    const size = 20;
 
     const response = await esClient.search({
       index: 'books',
@@ -132,16 +133,50 @@ const getSuggestions = async (req, res) => {
   }
 };
 
-
 const getBooks = async (req, res) => {
   try {
-    const books = await Book.find();
-    res.status(200).json(books);
+    const { page = 1, size = 20 } = req.query;
+    const from = (page - 1) * parseInt(size);
+    
+    const response = await esClient.search({
+      index: 'books',
+      from: parseInt(from),
+      size: parseInt(size),
+      _source: true,
+      query: { match_all: {} }
+    });
+    
+    const total = response.hits.total.value;
+    const totalPages = Math.ceil(total / parseInt(size));
+    
+    const results = response.hits.hits.map(hit => ({
+      _id: hit._id,
+      ...hit._source
+    }));
+
+    const availableFormats = await bookService.getAvailableFormats();
+    console.log('📚 Formatos disponibles:', availableFormats);
+
+    res.status(200).json({
+      total,
+      page: parseInt(page),
+      size: parseInt(size),
+      totalPages,
+      results,
+      // Añadir facets con formatos
+      facets: {
+        formats: availableFormats.map(format => ({ 
+          value: format, 
+          count: 0
+        }))
+      }
+    });
+    
   } catch (err) {
     console.error('❌ Error obteniendo libros:', err.message);
     res.status(500).json({ error: 'Error obteniendo libros.' });
   }
-}
+};
 
 
 const getBookById = async (req, res) => {
@@ -206,6 +241,109 @@ const getRelatedBooks = async (req, res) => {
   }
 };
 
+const searchWithFilters = async (req, res) => {
+  try {
+    const { query, genres, minPrice, maxPrice, formats, minYear, maxYear, page = 1 } = req.query;
+    const size = 20;
+    const from = (page - 1) * size;
+    
+    const esQuery = {
+      bool: {
+        must: [],
+        filter: []
+      }
+    };
+    
+    if (query && query.trim()) {
+      esQuery.bool.must.push({
+        multi_match: {
+          query: query.trim(),
+          fields: ['title^5', 'author^4', 'genre^3'],
+          operator: 'and'
+        }
+      });
+    } else {
+      esQuery.bool.must.push({ match_all: {} });
+    }
+    
+    if (genres && genres.trim()) {
+      esQuery.bool.filter.push({
+        bool: {
+          should: genres.split(',').map(g => ({
+            match: {
+              genre: {
+                query: g.trim(),
+                analyzer: 'standard'  // Esto asegura que la comparación es insensible a mayúsculas/minúsculas
+              }
+            }
+          })),
+          minimum_should_match: 1
+        }
+      });
+    }
+    
+    if (minPrice?.trim() || maxPrice?.trim()) {
+      const priceRange = {};
+      if (minPrice?.trim()) priceRange.gte = parseFloat(minPrice);
+      if (maxPrice?.trim()) priceRange.lte = parseFloat(maxPrice);
+      esQuery.bool.filter.push({ range: { price: priceRange } });
+    }
+    
+    if (formats && formats.trim()) {
+      esQuery.bool.filter.push({
+        terms: { format: formats.split(',').map(f => f.trim()) }
+      });
+    }
+    
+    if (minYear?.trim() || maxYear?.trim()) {
+      const yearRange = {};
+      if (minYear?.trim()) yearRange.gte = parseInt(minYear);
+      if (maxYear?.trim()) yearRange.lte = parseInt(maxYear);
+      esQuery.bool.filter.push({ range: { publishedYear: yearRange } });
+    }
+    
+    // Ejecutar la búsqueda en Elasticsearch
+    const response = await esClient.search({
+      index: 'books',
+      from,
+      size,
+      query: esQuery,
+      _source: true
+    });
+    
+    // Obtener resultados
+    const results = response.hits.hits.map(hit => ({
+      _id: hit._id,
+      ...hit._source
+    }));
+    
+    // Calcular paginación
+    const total = response.hits.total.value;
+    const totalPages = Math.ceil(total / size);
+    
+    // Obtener formatos disponibles desde el servicio
+    const availableFormats = await bookService.getAvailableFormats();
+    
+    // Devolver la respuesta
+    res.status(200).json({
+      total,
+      page: parseInt(page),
+      size,
+      totalPages,
+      results,
+      facets: {
+        formats: availableFormats.map(format => ({ 
+          value: format, 
+          count: 0
+        }))
+      }
+    });
+    
+  } catch (err) {
+    console.error('❌ Error en búsqueda con filtros:', err.message);
+    res.status(500).json({ error: 'Error en búsqueda con filtros.' });
+  }
+};
 module.exports = {
   createBook,
   importBooksController,
@@ -214,5 +352,6 @@ module.exports = {
   getBookById,
   getTopBooks,
   getRelatedBooks,
-  getSuggestions
+  getSuggestions,
+  searchWithFilters
 };

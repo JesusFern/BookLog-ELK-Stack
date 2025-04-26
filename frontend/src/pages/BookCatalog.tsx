@@ -4,6 +4,7 @@ import { API_BASE_URL } from '../config';
 import { Link } from 'react-router-dom';
 import Header from '../components/Header';
 import SearchSuggestions, { Suggestion } from '../components/SearchSuggestions';
+import BookFilters, { FilterState, FacetsData } from '../components/BookFilters';
 
 interface Book {
   _id: string;
@@ -23,6 +24,22 @@ const CatalogWrapper = styled.div`
   padding: 2rem;
   background-color: #f8f8f8;
   min-height: 100vh;
+`;
+
+const CatalogLayout = styled.div`
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 2rem;
+  
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const FiltersColumn = styled.div`
+  @media (max-width: 768px) {
+    display: none; // Ocultar en móviles
+  }
 `;
 
 const Grid = styled.div`
@@ -134,7 +151,19 @@ const BookCatalog = () => {
   const [pageInput, setPageInput] = useState('1');
   const [searchQuery, setSearchQuery] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const booksPerPage = 20;
+  const [isLoading, setIsLoading] = useState(false);
+  const [totalResults, setTotalResults] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [facets, setFacets] = useState<FacetsData | undefined>(undefined);
+
+  const [activeFilters, setActiveFilters] = useState<FilterState>({
+    genres: [],
+    minPrice: '',
+    maxPrice: '',
+    formats: [],
+    minYear: '',
+    maxYear: ''
+  });
 
   // Referencia para el contenedor de búsqueda
   const searchContainerRef = useRef<HTMLDivElement>(null);
@@ -158,58 +187,135 @@ const BookCatalog = () => {
   }, []);
 
   const loadBooks = () => {
+    setIsLoading(true);
     fetch(`${API_BASE_URL}/api/books/books`)
       .then(res => res.json())
-      .then(data => setBooks(data))
-      .catch(err => console.error('Error al cargar libros:', err));
+      .then(data => {
+        setBooks(data.results ?? []);
+        setTotalResults(data.total ?? 0);
+        setTotalPages(data.totalPages ?? 1);
+        setCurrentPage(data.page ?? 1);
+        setPageInput(data.page?.toString() ?? '1');
+        setIsLoading(false);
+        setFacets(data.facets ?? {});
+      })
+      .catch(err => {
+        console.error('Error al cargar libros:', err);
+        setIsLoading(false);
+      });
+  };
+  const handleFilterChange = (newFilters: FilterState) => {
+    setActiveFilters(newFilters);
+    searchWithFilters(searchQuery, newFilters, 1);
   };
 
-  const handleSearch = () => {
-    if (searchQuery.trim() === '') {
-      loadBooks();
-      return;
+  // Función para realizar la búsqueda con filtros
+  const searchWithFilters = (query: string, filters: FilterState, page: number) => {
+    setIsLoading(true);
+    
+    // Construir la URL con los parámetros de filtros
+    let url = new URL(`${API_BASE_URL}/api/books/search/filters`);
+    
+    // Añadir query si existe
+    if (query && query.trim() !== '') {
+      url.searchParams.append('query', query);
     }
-
-    fetch(`${API_BASE_URL}/api/books/search/pagination?query=${encodeURIComponent(searchQuery)}`)
+    
+    // Añadir filtros de géneros
+    if (filters.genres.length > 0) {
+      url.searchParams.append('genres', filters.genres.join(','));
+    }
+    
+    // Añadir filtros de precio
+    if (filters.minPrice && filters.minPrice.trim() !== '') {
+      url.searchParams.append('minPrice', filters.minPrice);
+    }
+    
+    if (filters.maxPrice && filters.maxPrice.trim() !== '') {
+      url.searchParams.append('maxPrice', filters.maxPrice);
+    }
+    
+    // Añadir filtros de formato
+    if (filters.formats.length > 0) {
+      url.searchParams.append('formats', filters.formats.join(','));
+    }
+    
+    // Añadir filtros de año
+    if (filters.minYear && filters.minYear.trim() !== '') {
+      url.searchParams.append('minYear', filters.minYear);
+    }
+    
+    if (filters.maxYear && filters.maxYear.trim() !== '') {
+      url.searchParams.append('maxYear', filters.maxYear);
+    }
+    
+    // Añadir página
+    url.searchParams.append('page', page.toString());
+    
+    // Realizar la búsqueda
+    fetch(url.toString())
       .then(res => res.json())
       .then(data => {
         setBooks(data.results || []);
-        setCurrentPage(1);
-        setPageInput('1');
+        setCurrentPage(data.page || 1);
+        setPageInput(data.page.toString() || '1');
+        setTotalResults(data.total || 0);
+        setTotalPages(data.totalPages || 0);
+        setFacets(data.facets);
+        setIsLoading(false);
       })
-      .catch(err => console.error('Error buscando libros:', err));
+      .catch(err => {
+        console.error('Error al buscar con filtros:', err);
+        setIsLoading(false);
+      });
   };
 
-  const indexOfLastBook = currentPage * booksPerPage;
-  const indexOfFirstBook = indexOfLastBook - booksPerPage;
-  const currentBooks = books.slice(indexOfFirstBook, indexOfLastBook);
-  const totalPages = Math.ceil(books.length / booksPerPage);
+  // Función para realizar la búsqueda básica (mantiene los filtros)
+  const handleSearch = () => {
+    searchWithFilters(searchQuery, activeFilters, 1);
+  };
 
-  const nextPage = () => {
-    if (currentPage < totalPages) {
-      setCurrentPage(prev => prev + 1);
-      setPageInput((currentPage + 1).toString());
+  const changePage = (newPage: number) => {
+    if (newPage >= 1 && newPage <= totalPages) {
+      setIsLoading(true);
+      
+      // Si hay una búsqueda activa o filtros, usar searchWithFilters
+      if (searchQuery || Object.values(activeFilters).some(val => 
+        Array.isArray(val) ? val.length > 0 : val !== '')) {
+        searchWithFilters(searchQuery, activeFilters, newPage);
+      } else {
+        // Cargar libros normales con paginación
+        fetch(`${API_BASE_URL}/api/books/books?page=${newPage}&size=20`)
+          .then(res => res.json())
+          .then(data => {
+            setBooks(data.results ?? []);
+            setCurrentPage(data.page ?? newPage);
+            setPageInput(data.page?.toString() ?? newPage.toString());
+            setTotalResults(data.total ?? 0);
+            setTotalPages(data.totalPages ?? 1);
+            setIsLoading(false);
+          })
+          .catch(err => {
+            console.error('Error cambiando de página:', err);
+            setIsLoading(false);
+          });
+      }
     }
   };
 
-  const prevPage = () => {
-    if (currentPage > 1) {
-      setCurrentPage(prev => prev - 1);
-      setPageInput((currentPage - 1).toString());
-    }
-  };
-
+  // Funciones de paginación
+  const nextPage = () => changePage(currentPage + 1);
+  const prevPage = () => changePage(currentPage - 1);
+  
   const handlePageInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setPageInput(e.target.value);
   };
 
   const handlePageInputSubmit = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
-      let pageNumber = parseInt(pageInput);
+      const pageNumber = parseInt(pageInput);
       if (!isNaN(pageNumber)) {
-        if (pageNumber < 1) pageNumber = 1;
-        if (pageNumber > totalPages) pageNumber = totalPages;
-        setCurrentPage(pageNumber);
+        changePage(pageNumber);
       }
     }
   };
@@ -248,16 +354,10 @@ const BookCatalog = () => {
     setSearchQuery(suggestion.title);
     setShowSuggestions(false);
     
-    fetch(`${API_BASE_URL}/api/books/search/pagination?query=${encodeURIComponent(suggestion.title)}`)
-      .then(res => res.json())
-      .then(data => {
-        setBooks(data.results || []);
-        setCurrentPage(1);
-        setPageInput('1');
-      })
-      .catch(err => console.error('Error buscando libros:', err));
+    searchWithFilters(suggestion.title, activeFilters, 1);
   };
 
+  const currentBooks = books;
 
   return (
     <>
@@ -286,61 +386,89 @@ const BookCatalog = () => {
             <SearchSuggestions 
               query={searchQuery}
               onSelect={handleSuggestionSelect}
-              inputRef={searchContainerRef}
+              inputRef={searchContainerRef as React.RefObject<HTMLDivElement>}
             />
           )}
         </SearchBarContainer>
 
-        <Grid>
-          {currentBooks.length > 0 ? (
-            currentBooks.map(book => (
-              <BookCard to={`/book/${book._id}`} key={book._id}>
-                {book.coverImageUrl && <BookImage src={book.coverImageUrl} alt={book.title} />}
-                <h3>{book.title}</h3>
-                <p><strong>Autor:</strong> {book.author}</p>
-                <p><strong>Género:</strong> {book.genre || 'No especificado'}</p>
-                <p>
-                  <strong>Precio:</strong> 
-                  {book.price !== undefined ? `$${book.price.toFixed(2)}` : 'No especificado'}
+        <CatalogLayout>
+          <FiltersColumn>
+            <BookFilters 
+              onFilterChange={handleFilterChange}
+              facets={facets}
+              initialFilters={activeFilters}
+            />
+          </FiltersColumn>
+          
+          <div>
+            {isLoading ? (
+              <p style={{ textAlign: 'center', padding: '2rem' }}>Cargando...</p>
+            ) : (
+              <>
+                <p style={{ marginBottom: '1rem' }}>
+                  {totalResults > 0 ? (
+                    `Mostrando ${(currentPage - 1) * 20 + 1}-${Math.min(currentPage * 20, totalResults)} de ${totalResults} resultados`
+                  ) : (
+                    'No se encontraron resultados'
+                  )}
                 </p>
-                <button 
-                  onClick={(e) => {
-                    e.preventDefault(); // Evita navegación al hacer clic en el botón
-                    handleAddToCart(book);
-                  }}
-                >
-                  Añadir al carrito
-                </button>
-              </BookCard>
-            ))
-          ) : (
-            <p style={{ gridColumn: 'span 5', textAlign: 'center', padding: '2rem' }}>
-              No se encontraron libros con los criterios de búsqueda.
-            </p>
-          )}
-        </Grid>
+                
+                <Grid>
+                  {currentBooks.length > 0 ? (
+                    currentBooks.map(book => (
+                      <BookCard to={`/book/${book._id}`} key={book._id}>
+                        {book.coverImageUrl && <BookImage src={book.coverImageUrl} alt={book.title} />}
+                        <h3>{book.title}</h3>
+                        <p><strong>Autor:</strong> {book.author}</p>
+                        <p><strong>Género:</strong> {book.genre || 'No especificado'}</p>
+                        <p>
+                          <strong>Precio:</strong> 
+                          {book.price !== undefined ? `$${book.price.toFixed(2)}` : 'No especificado'}
+                        </p>
+                        <button 
+                          onClick={(e) => {
+                            e.preventDefault(); // Evita navegación al hacer clic en el botón
+                            handleAddToCart(book);
+                          }}
+                        >
+                          Añadir al carrito
+                        </button>
+                      </BookCard>
+                    ))
+                  ) : (
+                    <p style={{ gridColumn: 'span 5', textAlign: 'center', padding: '2rem' }}>
+                      No se encontraron libros con los criterios seleccionados.
+                    </p>
+                  )}
+                </Grid>
+                
+                {/* Paginación */}
+                {totalPages > 1 && (
+                  <Pagination>
+                    <PageButton onClick={prevPage} disabled={currentPage === 1}>
+                      Anterior
+                    </PageButton>
 
-        {/* Paginación existente */}
-        <Pagination>
-          <PageButton onClick={prevPage} disabled={currentPage === 1}>
-            Anterior
-          </PageButton>
+                    <PageInput 
+                      type="number" 
+                      min="1" 
+                      max={totalPages} 
+                      value={pageInput}
+                      onChange={handlePageInputChange}
+                      onKeyDown={handlePageInputSubmit}
+                    />
 
-          <PageInput 
-            type="number" 
-            min="1" 
-            max={totalPages} 
-            value={pageInput}
-            onChange={handlePageInputChange}
-            onKeyDown={handlePageInputSubmit}
-          />
+                    <span>de {totalPages}</span>
 
-          <span>de {totalPages}</span>
-
-          <PageButton onClick={nextPage} disabled={currentPage === totalPages}>
-            Siguiente
-          </PageButton>
-        </Pagination>
+                    <PageButton onClick={nextPage} disabled={currentPage === totalPages}>
+                      Siguiente
+                    </PageButton>
+                  </Pagination>
+                )}
+              </>
+            )}
+          </div>
+        </CatalogLayout>
       </CatalogWrapper>
     </>
   );
