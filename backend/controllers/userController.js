@@ -109,9 +109,112 @@ const populateUsersController = async (req, res) => {
   }
 };
 
+
+const userDetails = async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1]; // Obtener el token del header Authorization
+    if (!token) {
+      return res.status(401).json({ error: 'No autorizado.' });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const userId = decoded.userId;
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ error: 'Usuario no encontrado.' });
+    }
+
+    res.status(200).json({ user });
+  } catch (err) {
+    console.error('❌ Error obteniendo detalles del usuario:', err.message);
+    res.status(500).json({ error: 'Error obteniendo detalles del usuario.' });
+  }
+};
+
+
+const getCart = async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1]; // Obtener el token del header Authorization
+    if (!token) {
+      return res.status(401).json({ error: 'No autorizado.' });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const userId = decoded.userId;
+
+    const user = await User.findById(userId).populate('cart');
+    if (!user) {
+      return res.status(404).json({ error: 'Usuario no encontrado.' });
+    }
+
+    res.status(200).json({ cart: user.cart });
+  } catch (err) {
+    console.error('❌ Error obteniendo el carrito:', err.message);
+    res.status(500).json({ error: 'Error obteniendo el carrito.' });
+  }
+}
+
+
+const addItemCart = async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    console.log('🔐 Token recibido:', token);
+    if (!token) {
+      return res.status(401).json({ error: 'No autorizado.' });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    console.log('✅ Token decodificado:', decoded);
+
+    const userId = decoded.userId;
+    const { bookId } = req.body;
+
+    console.log('📘 Book ID:', bookId);
+    const book = await Book.findById(bookId);
+    if (!book) {
+      console.log('❌ Libro no encontrado');
+      return res.status(404).json({ error: 'Libro no encontrado.' });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      console.log('❌ Usuario no encontrado');
+      return res.status(404).json({ error: 'Usuario no encontrado.' });
+    }
+
+    if (user.cart.includes(bookId)) {
+      console.log('❌ El libro ya está en el carrito');
+      return res.status(400).json({ error: 'El libro ya está en el carrito.' });
+    }
+
+    user.cart.push(bookId);
+    const savedUser = await user.save();
+
+    try {
+      await updateUserInElastic(savedUser);
+    } catch (elasticErr) {
+      console.warn('⚠️ Error actualizando en ElasticSearch (ignorado):', elasticErr.message);
+    }
+
+    console.log('🛒 Libro añadido al carrito:', savedUser.cart);
+    res.status(200).json({
+      message: 'Libro añadido al carrito con éxito.',
+      cart: user.cart,
+    });
+
+  } catch (err) {
+    console.error('❌ Error añadiendo libro al carrito:', err.message);
+    res.status(500).json({ error: 'Error añadiendo libro al carrito.' });
+  }
+}
+
 module.exports = {
   registerUser,
   loginUser,
   addPurchasedBook,
   populateUsersController,
+  userDetails,
+  getCart,
+  addItemCart,
 };

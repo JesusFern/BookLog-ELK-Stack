@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import styled from 'styled-components';
 import { API_BASE_URL } from '../config';
 import { Link } from 'react-router-dom';
+import Header from '../components/Header';
 
 interface Book {
   _id: string;
@@ -65,6 +66,7 @@ const Pagination = styled.div`
   margin-top: 2rem;
   display: flex;
   justify-content: center;
+  align-items: center;
   gap: 1rem;
 `;
 
@@ -79,17 +81,73 @@ const PageButton = styled.button<{ disabled?: boolean }>`
   opacity: ${({ disabled }) => (disabled ? 0.6 : 1)};
 `;
 
+const PageInput = styled.input`
+  width: 60px;
+  padding: 0.3rem 0.5rem;
+  font-size: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  text-align: center;
+`;
+
+const SearchBar = styled.div`
+  margin-bottom: 2rem;
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+`;
+
+const SearchInput = styled.input`
+  padding: 0.5rem 1rem;
+  font-size: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  width: 300px;
+`;
+
+const SearchButton = styled.button`
+  background-color: #007bff;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  font-size: 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+`;
+
 const BookCatalog = () => {
   const [books, setBooks] = useState<Book[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
+  const [pageInput, setPageInput] = useState('1');
+  const [searchQuery, setSearchQuery] = useState('');
   const booksPerPage = 20;
 
   useEffect(() => {
+    loadBooks();
+  }, []);
+
+  const loadBooks = () => {
     fetch(`${API_BASE_URL}/api/books/books`)
       .then(res => res.json())
       .then(data => setBooks(data))
       .catch(err => console.error('Error al cargar libros:', err));
-  }, []);
+  };
+
+  const handleSearch = () => {
+    if (searchQuery.trim() === '') {
+      loadBooks();
+      return;
+    }
+
+    fetch(`${API_BASE_URL}/api/books/search/pagination?query=${encodeURIComponent(searchQuery)}`)
+      .then(res => res.json())
+      .then(data => {
+        setBooks(data.results || []);
+        setCurrentPage(1);
+        setPageInput('1');
+      })
+      .catch(err => console.error('Error buscando libros:', err));
+  };
 
   const indexOfLastBook = currentPage * booksPerPage;
   const indexOfFirstBook = indexOfLastBook - booksPerPage;
@@ -97,37 +155,116 @@ const BookCatalog = () => {
   const totalPages = Math.ceil(books.length / booksPerPage);
 
   const nextPage = () => {
-    if (currentPage < totalPages) setCurrentPage(prev => prev + 1);
+    if (currentPage < totalPages) {
+      setCurrentPage(prev => prev + 1);
+      setPageInput((currentPage + 1).toString());
+    }
   };
 
   const prevPage = () => {
-    if (currentPage > 1) setCurrentPage(prev => prev - 1);
+    if (currentPage > 1) {
+      setCurrentPage(prev => prev - 1);
+      setPageInput((currentPage - 1).toString());
+    }
+  };
+
+  const handlePageInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setPageInput(e.target.value);
+  };
+
+  const handlePageInputSubmit = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      let pageNumber = parseInt(pageInput);
+      if (!isNaN(pageNumber)) {
+        if (pageNumber < 1) pageNumber = 1;
+        if (pageNumber > totalPages) pageNumber = totalPages;
+        setCurrentPage(pageNumber);
+      }
+    }
+  };
+
+  const handleAddToCart = async (book: Book) => {
+    const token = localStorage.getItem('token');
+  
+    if (!token) {
+      alert('Debes iniciar sesión para añadir libros al carrito.');
+      return;
+    }
+  
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/users/cart/add`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ bookId: book._id }),
+      });
+  
+      const data = await response.json();
+  
+      if (response.ok) {
+        alert('✅ Libro añadido al carrito.');
+      } else {
+        console.error('❌ Backend respondió con error:', data);
+      }
+    } catch (err: any) {
+      alert(`❌ Error: ${err.message || 'Algo salió mal'}`);
+    }
   };
 
   return (
-    <CatalogWrapper>
-      <Grid>
-        {currentBooks.map(book => (
-          <BookCard to={`/book/${book._id}`} key={book._id}>
-            {book.coverImageUrl && <BookImage src={book.coverImageUrl} alt={book.title} />}
-            <h3>{book.title}</h3>
-            <p><strong>Autor:</strong> {book.author}</p>
-            <p><strong>Género:</strong> {book.genre}</p>
-            <p><strong>Precio:</strong> ${book.price.toFixed(2)}</p>
-          </BookCard>
-        ))}
-      </Grid>
+    <>
+      <Header />
+      <CatalogWrapper>
+        <SearchBar>
+          <SearchInput 
+            type="text" 
+            placeholder="Buscar libros..." 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleSearch();
+            }}
+          />
+          <SearchButton onClick={handleSearch}>Buscar</SearchButton>
+        </SearchBar>
 
-      <Pagination>
-        <PageButton onClick={prevPage} disabled={currentPage === 1}>
-          Anterior
-        </PageButton>
-        <span>Página {currentPage} de {totalPages}</span>
-        <PageButton onClick={nextPage} disabled={currentPage === totalPages}>
-          Siguiente
-        </PageButton>
-      </Pagination>
-    </CatalogWrapper>
+        <Grid>
+          {currentBooks.map(book => (
+            <BookCard to={`/book/${book._id}`} key={book._id}>
+              {book.coverImageUrl && <BookImage src={book.coverImageUrl} alt={book.title} />}
+              <h3>{book.title}</h3>
+              <p><strong>Autor:</strong> {book.author}</p>
+              <p><strong>Género:</strong> {book.genre}</p>
+              <p><strong>Precio:</strong> ${book.price.toFixed(2)}</p>
+              <button onClick={() => handleAddToCart(book)}>Añadir al carrito</button>
+            </BookCard>
+          ))}
+        </Grid>
+
+        <Pagination>
+          <PageButton onClick={prevPage} disabled={currentPage === 1}>
+            Anterior
+          </PageButton>
+
+          <PageInput 
+            type="number" 
+            min="1" 
+            max={totalPages} 
+            value={pageInput}
+            onChange={handlePageInputChange}
+            onKeyDown={handlePageInputSubmit}
+          />
+
+          <span>de {totalPages}</span>
+
+          <PageButton onClick={nextPage} disabled={currentPage === totalPages}>
+            Siguiente
+          </PageButton>
+        </Pagination>
+      </CatalogWrapper>
+    </>
   );
 };
 
