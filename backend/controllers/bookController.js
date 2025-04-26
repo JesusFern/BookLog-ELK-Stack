@@ -22,7 +22,12 @@ const importBooksController = async (req, res) => {
   try {
     const { shouldDelete } = req.body; // Obtén el parámetro desde el cuerpo de la solicitud
     console.log(`📚 Iniciando importación de libros... (shouldDelete: ${shouldDelete})`);
-
+    
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    if (!decoded.isAdmin) {
+      return res.status(403).json({ error: 'Acceso denegado. No eres administrador.' });
+    }
+    
     await importBooks(shouldDelete); // Pasa el parámetro al servicio
     res.status(200).json({ message: 'Importación de libros completada con éxito.' });
   } catch (err) {

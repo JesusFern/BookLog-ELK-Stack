@@ -9,14 +9,14 @@ const populateUsers = require('../utils/populateUsers');
 
 const registerUser = async (req, res) => {
   try {
-    const { name, email, password } = req.body;
+    const { name, email, password, isAdmin } = req.body;
 
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).json({ error: 'El correo ya está registrado.' });
     }
 
-    const user = new User({ name, email, password });
+    const user = new User({ name, email, password, isAdmin: isAdmin || false });
     const savedUser = await user.save();
 
     // Indexar el usuario en Elasticsearch
@@ -43,7 +43,7 @@ const loginUser = async (req, res) => {
       return res.status(400).json({ error: 'Credenciales inválidas.' });
     }
 
-    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+    const token = jwt.sign({ userId: user._id, isAdmin: user.isAdmin }, process.env.JWT_SECRET, { expiresIn: '1h' });
 
     res.status(200).json({ token });
   } catch (err) {

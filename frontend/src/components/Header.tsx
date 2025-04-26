@@ -1,7 +1,8 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
-import { ShoppingCart, User, Home } from 'lucide-react';
+import { ShoppingCart, User, Home, Shield } from 'lucide-react';
+import { jwtDecode}  from 'jwt-decode';
 
 const HeaderWrapper = styled.header`
   display: flex;
@@ -33,19 +34,43 @@ const IconButton = styled.button`
   align-items: center;
 `;
 
-const Header = () => {
+// Tipar el payload del token
+interface JwtPayload {
+  userId: string;
+  isAdmin: boolean;
+  iat: number;
+  exp: number;
+}
+
+const Header: React.FC = () => {
   const navigate = useNavigate();
+
+  const token = localStorage.getItem('token');
+  let isAdmin = false;
+
+  if (token) {
+    try {
+      const decoded = jwtDecode<JwtPayload>(token);
+      isAdmin = decoded.isAdmin;
+    } catch (err) {
+      console.error('❌ Error decodificando token:', err);
+    }
+  }
 
   return (
     <HeaderWrapper>
       <LeftSection>
-        {/* Botón de casita para volver al catálogo */}
         <IconButton title="Volver al Catálogo" onClick={() => navigate('/catalog')}>
           <Home />
         </IconButton>
       </LeftSection>
       
       <RightSection>
+        {isAdmin && (
+          <IconButton title="Panel Admin" onClick={() => navigate('/admin')}>
+            <Shield />
+          </IconButton>
+        )}
         <IconButton title="Carrito" onClick={() => navigate('/cart')}>
           <ShoppingCart />
         </IconButton>

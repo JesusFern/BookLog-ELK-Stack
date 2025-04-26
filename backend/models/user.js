@@ -18,6 +18,7 @@ const userSchema = new mongoose.Schema({
       ref: 'Book',
     },
   ],
+  isAdmin: { type: Boolean, default: false },
 });
 
 // Middleware para encriptar la contraseña antes de guardar
