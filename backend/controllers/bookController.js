@@ -113,7 +113,7 @@ const searchByPriceRange = async (req, res) => {
 const multiMatchFuzzySearch = async (req, res) => {
   try {
     const { query, page = 1 } = req.query;
-    const size = 10;
+    const size = 100;
 
     const response = await esClient.search({
       index: 'books',
