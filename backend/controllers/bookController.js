@@ -119,13 +119,29 @@ const multiMatchFuzzySearch = async (req, res) => {
       index: 'books',
       from: (page - 1) * size,
       size: parseInt(size),
+      _source: true,
       query: {
-        multi_match: {
-          query: query,
-          fields: ['title^4', 'author^3', 'genre^2', 'summary^1'],
-          fuzziness: 'AUTO',
-          type: 'best_fields', 
-          operator: 'and'
+        bool: {
+          should: [
+            {
+              multi_match: {
+                query: query,
+                fields: ['title^5', 'author^4', 'genre^3'],
+                type: 'phrase',
+                boost: 3
+              }
+            },
+            {
+              multi_match: {
+                query: query,
+                fields: ['title^4', 'author^3', 'genre^2', 'summary^1'],
+                fuzziness: 'AUTO',
+                type: 'best_fields',
+                operator: 'and'
+              }
+            }
+          ],
+          minimum_should_match: 1
         }
       }
     });
@@ -133,12 +149,19 @@ const multiMatchFuzzySearch = async (req, res) => {
     const total = response.hits.total.value;
     const totalPages = Math.ceil(total / size);
 
+    const results = response.hits.hits.map((hit) => {
+      return {
+        _id: hit._id,
+        ...hit._source
+      };
+    });
+
     res.status(200).json({
       total,
       page: parseInt(page),
       size: parseInt(size),
       totalPages,
-      results: response.hits.hits.map((hit) => hit._source),
+      results
     });
   } catch (err) {
     console.error('❌ Error en búsqueda combinada multi_match y fuzzy:', err.message);
