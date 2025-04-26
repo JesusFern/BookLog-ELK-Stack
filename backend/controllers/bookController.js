@@ -197,14 +197,17 @@ const getTopBooks = async (req, res) => {
   try {
     const response = await esClient.search({
       index: 'books',
-      size: 3,
+      size: 8,
       sort: [
         { purchasedCount: { order: 'desc' } }
       ],
-      _source: ['title', 'author', 'purchasedCount'],
+      _source: ['_id', 'title', 'author', 'purchasedCount', 'coverImageUrl', 'price', 'genre'],
     });
 
-    const topBooks = response.hits.hits.map((hit) => hit._source);
+    const topBooks = response.hits.hits.map((hit) => ({
+      _id: hit._id,
+      ...hit._source
+    }));
 
     res.status(200).json(topBooks);
   } catch (err) {

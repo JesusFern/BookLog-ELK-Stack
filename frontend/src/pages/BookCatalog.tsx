@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom';
 import Header from '../components/Header';
 import SearchSuggestions, { Suggestion } from '../components/SearchSuggestions';
 import BookFilters, { FilterState, FacetsData } from '../components/BookFilters';
+import PopularBooks from '../components/PopularBooks';
 
 interface Book {
   _id: string;
@@ -155,6 +156,7 @@ const BookCatalog = () => {
   const [totalResults, setTotalResults] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [facets, setFacets] = useState<FacetsData | undefined>(undefined);
+  const [activeSearch, setActiveSearch] = useState(false);
 
   const [activeFilters, setActiveFilters] = useState<FilterState>({
     genres: [],
@@ -188,6 +190,7 @@ const BookCatalog = () => {
 
   const loadBooks = () => {
     setIsLoading(true);
+    setActiveSearch(false);
     fetch(`${API_BASE_URL}/api/books/books`)
       .then(res => res.json())
       .then(data => {
@@ -272,6 +275,9 @@ const BookCatalog = () => {
 
   // Función para realizar la búsqueda básica (mantiene los filtros)
   const handleSearch = () => {
+    if (searchQuery.trim() !== '') {
+      setActiveSearch(true);
+    }
     searchWithFilters(searchQuery, activeFilters, 1);
   };
 
@@ -320,7 +326,16 @@ const BookCatalog = () => {
     }
   };
 
-  const handleAddToCart = async (book: Book) => {
+  const shouldShowPopularBooks = () => {
+    // No mostrar libros populares si hay una búsqueda o filtros activos
+    const hasActiveFilters = Object.values(activeFilters).some(val => 
+      Array.isArray(val) ? val.length > 0 : val !== '');
+      
+    return !activeSearch && !hasActiveFilters;
+  };
+
+
+  const handleAddToCartById = async (bookId: string) => {
     const token = localStorage.getItem('token');
   
     if (!token) {
@@ -335,7 +350,7 @@ const BookCatalog = () => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify({ bookId: book._id }),
+        body: JSON.stringify({ bookId }),
       });
   
       const data = await response.json();
@@ -349,10 +364,16 @@ const BookCatalog = () => {
       alert(`❌ Error: ${err.message || 'Algo salió mal'}`);
     }
   };
+  
+  // Mantener el handler original para los libros del catálogo
+  const handleAddToCart = (book: Book) => {
+    handleAddToCartById(book._id);
+  };
 
   const handleSuggestionSelect = (suggestion: Suggestion) => {
     setSearchQuery(suggestion.title);
     setShowSuggestions(false);
+    setActiveSearch(true);
     
     searchWithFilters(suggestion.title, activeFilters, 1);
   };
@@ -372,6 +393,9 @@ const BookCatalog = () => {
               onChange={(e) => {
                 setSearchQuery(e.target.value);
                 setShowSuggestions(true);
+                if (e.target.value === '') {
+                  setActiveSearch(false);
+                }
               }}
               onFocus={() => setShowSuggestions(true)}
               onKeyDown={(e) => {
@@ -390,6 +414,10 @@ const BookCatalog = () => {
             />
           )}
         </SearchBarContainer>
+
+        {shouldShowPopularBooks() && (
+          <PopularBooks onAddToCart={handleAddToCartById} />
+        )}
 
         <CatalogLayout>
           <FiltersColumn>
