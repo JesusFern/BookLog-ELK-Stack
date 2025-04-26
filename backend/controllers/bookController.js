@@ -191,6 +191,47 @@ const fuzzySearchByTitle = async (req, res) => {
   }
 };
 
+const getSuggestions = async (req, res) => {
+  try {
+    const { query } = req.query;
+    
+    if (!query || query.trim() === '') {
+      return res.status(200).json({ suggestions: [] });
+    }
+
+    const response = await esClient.search({
+      index: 'books',
+      body: {
+        suggest: {
+          title_suggestions: {
+            prefix: query.toLowerCase(),
+            completion: {
+              field: 'title_suggest',
+              size: 5,
+              skip_duplicates: true
+            }
+          }
+        },
+        _source: ['title', 'author', '_id', 'coverImageUrl']
+      }
+    });
+
+    const suggestions = response.suggest?.title_suggestions[0]?.options || [];
+    
+    const mappedSuggestions = suggestions.map(suggestion => ({
+      _id: suggestion._id,
+      title: suggestion._source.title,
+      author: suggestion._source.author,
+      coverImageUrl: suggestion._source.coverImageUrl
+    }));
+
+    res.status(200).json({ suggestions: mappedSuggestions });
+  } catch (err) {
+    console.error('❌ Error obteniendo sugerencias:', err.message);
+    res.status(500).json({ error: 'Error obteniendo sugerencias.' });
+  }
+};
+
 
 const getBooks = async (req, res) => {
   try {
@@ -277,5 +318,6 @@ module.exports = {
   getBooks,
   getBookById,
   getTopBooks,
-  getRelatedBooks
+  getRelatedBooks,
+  getSuggestions
 };

@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import styled from 'styled-components';
 import { API_BASE_URL } from '../config';
 import { Link } from 'react-router-dom';
 import Header from '../components/Header';
+import SearchSuggestions, { Suggestion } from '../components/SearchSuggestions';
 
 interface Book {
   _id: string;
@@ -115,12 +116,42 @@ const SearchButton = styled.button`
   cursor: pointer;
 `;
 
+const SearchBarContainer = styled.div`
+  position: relative;
+  margin-bottom: 2rem;
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  max-width: 400px;
+  margin-left: auto;
+  margin-right: auto;
+`;
+
+
 const BookCatalog = () => {
   const [books, setBooks] = useState<Book[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageInput, setPageInput] = useState('1');
   const [searchQuery, setSearchQuery] = useState('');
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const booksPerPage = 20;
+
+  // Referencia para el contenedor de búsqueda
+  const searchContainerRef = useRef<HTMLDivElement>(null);
+
+  // Efecto para cerrar sugerencias al hacer clic fuera
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) {
+        setShowSuggestions(false);
+      }
+    }
+    
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   useEffect(() => {
     loadBooks();
@@ -213,36 +244,83 @@ const BookCatalog = () => {
     }
   };
 
+  const handleSuggestionSelect = (suggestion: Suggestion) => {
+    setSearchQuery(suggestion.title);
+    setShowSuggestions(false);
+    
+    fetch(`${API_BASE_URL}/api/books/search/pagination?query=${encodeURIComponent(suggestion.title)}`)
+      .then(res => res.json())
+      .then(data => {
+        setBooks(data.results || []);
+        setCurrentPage(1);
+        setPageInput('1');
+      })
+      .catch(err => console.error('Error buscando libros:', err));
+  };
+
+
   return (
     <>
       <Header />
       <CatalogWrapper>
-        <SearchBar>
-          <SearchInput 
-            type="text" 
-            placeholder="Buscar libros..." 
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') handleSearch();
-            }}
-          />
-          <SearchButton onClick={handleSearch}>Buscar</SearchButton>
-        </SearchBar>
+        <SearchBarContainer ref={searchContainerRef}>
+          <SearchBar>
+            <SearchInput 
+              type="text" 
+              placeholder="Buscar libros..." 
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setShowSuggestions(true);
+              }}
+              onFocus={() => setShowSuggestions(true)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleSearch();
+                if (e.key === 'Escape') setShowSuggestions(false);
+              }}
+            />
+            <SearchButton onClick={handleSearch}>Buscar</SearchButton>
+          </SearchBar>
+          
+          {showSuggestions && (
+            <SearchSuggestions 
+              query={searchQuery}
+              onSelect={handleSuggestionSelect}
+              inputRef={searchContainerRef}
+            />
+          )}
+        </SearchBarContainer>
 
         <Grid>
-          {currentBooks.map(book => (
-            <BookCard to={`/book/${book._id}`} key={book._id}>
-              {book.coverImageUrl && <BookImage src={book.coverImageUrl} alt={book.title} />}
-              <h3>{book.title}</h3>
-              <p><strong>Autor:</strong> {book.author}</p>
-              <p><strong>Género:</strong> {book.genre}</p>
-              <p><strong>Precio:</strong> ${book.price.toFixed(2)}</p>
-              <button onClick={() => handleAddToCart(book)}>Añadir al carrito</button>
-            </BookCard>
-          ))}
+          {currentBooks.length > 0 ? (
+            currentBooks.map(book => (
+              <BookCard to={`/book/${book._id}`} key={book._id}>
+                {book.coverImageUrl && <BookImage src={book.coverImageUrl} alt={book.title} />}
+                <h3>{book.title}</h3>
+                <p><strong>Autor:</strong> {book.author}</p>
+                <p><strong>Género:</strong> {book.genre || 'No especificado'}</p>
+                <p>
+                  <strong>Precio:</strong> 
+                  {book.price !== undefined ? `$${book.price.toFixed(2)}` : 'No especificado'}
+                </p>
+                <button 
+                  onClick={(e) => {
+                    e.preventDefault(); // Evita navegación al hacer clic en el botón
+                    handleAddToCart(book);
+                  }}
+                >
+                  Añadir al carrito
+                </button>
+              </BookCard>
+            ))
+          ) : (
+            <p style={{ gridColumn: 'span 5', textAlign: 'center', padding: '2rem' }}>
+              No se encontraron libros con los criterios de búsqueda.
+            </p>
+          )}
         </Grid>
 
+        {/* Paginación existente */}
         <Pagination>
           <PageButton onClick={prevPage} disabled={currentPage === 1}>
             Anterior
