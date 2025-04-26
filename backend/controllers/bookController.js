@@ -2,6 +2,7 @@ const Book = require('../models/book');
 const esClient = require('../utils/elasticsearchClient');
 const importBooks = require('../services/importBooksService');
 const { indexBook } = require('../services/elasticBookService');
+const bookService = require('../services/bookService');
 
 // Crear un libro
 const createBook = async (req, res) => {
@@ -31,101 +32,38 @@ const importBooksController = async (req, res) => {
   }
 };
 
-const searchByTitle = async (req, res) => {
-  try {
-    const { title } = req.query;
-    const response = await esClient.search({
-      index: 'books',
-      query: {
-        match: {
-          title: title,
-        },
-      },
-    });
-
-    res.status(200).json(response.hits.hits.map(hit => hit._source));
-  } catch (err) {
-    console.error('❌ Error buscando por título:', err.message);
-    res.status(500).json({ error: 'Error buscando por título.' });
-  }
-};
-
-const searchByAuthor = async (req, res) => {
-  try {
-    const { author } = req.query;
-    const response = await esClient.search({
-      index: 'books',
-      query: {
-        match: {
-          author: author, // Busca coincidencias en el campo "author"
-        },
-      },
-    });
-
-    res.status(200).json(response.hits.hits.map(hit => hit._source));
-  } catch (err) {
-    console.error('❌ Error buscando por autor:', err.message);
-    res.status(500).json({ error: 'Error buscando por autor.' });
-  }
-};
-
-const searchByGenre = async (req, res) => {
-  try {
-    const { genre } = req.query;
-    const response = await esClient.search({
-      index: 'books',
-      query: {
-        match: {
-          genre: genre, // Busca coincidencias en el campo "genre"
-        },
-      },
-    });
-
-    res.status(200).json(response.hits.hits.map(hit => hit._source));
-  } catch (err) {
-    console.error('❌ Error buscando por género:', err.message);
-    res.status(500).json({ error: 'Error buscando por género.' });
-  }
-};
-
-const searchByPriceRange = async (req, res) => {
-  try {
-    const { minPrice, maxPrice } = req.query;
-    const response = await esClient.search({
-      index: 'books',
-      query: {
-        range: {
-          price: {
-            gte: parseFloat(minPrice), // Precio mínimo
-            lte: parseFloat(maxPrice), // Precio máximo
-          },
-        },
-      },
-    });
-
-    res.status(200).json(response.hits.hits.map(hit => hit._source));
-  } catch (err) {
-    console.error('❌ Error buscando por rango de precios:', err.message);
-    res.status(500).json({ error: 'Error buscando por rango de precios.' });
-  }
-};
-
 const multiMatchFuzzySearch = async (req, res) => {
   try {
     const { query, page = 1 } = req.query;
-    const size = 100;
+    const size = 20;
 
     const response = await esClient.search({
       index: 'books',
       from: (page - 1) * size,
       size: parseInt(size),
+      _source: true,
       query: {
-        multi_match: {
-          query: query,
-          fields: ['title^4', 'author^3', 'genre^2', 'summary^1'],
-          fuzziness: 'AUTO',
-          type: 'best_fields', 
-          operator: 'and'
+        bool: {
+          should: [
+            {
+              multi_match: {
+                query: query,
+                fields: ['title^5', 'author^4', 'genre^3'],
+                type: 'phrase',
+                boost: 3
+              }
+            },
+            {
+              multi_match: {
+                query: query,
+                fields: ['title^4', 'author^3', 'genre^2', 'summary^1'],
+                fuzziness: 'AUTO',
+                type: 'best_fields',
+                operator: 'and'
+              }
+            }
+          ],
+          minimum_should_match: 1
         }
       }
     });
@@ -133,12 +71,19 @@ const multiMatchFuzzySearch = async (req, res) => {
     const total = response.hits.total.value;
     const totalPages = Math.ceil(total / size);
 
+    const results = response.hits.hits.map((hit) => {
+      return {
+        _id: hit._id,
+        ...hit._source
+      };
+    });
+
     res.status(200).json({
       total,
       page: parseInt(page),
       size: parseInt(size),
       totalPages,
-      results: response.hits.hits.map((hit) => hit._source),
+      results
     });
   } catch (err) {
     console.error('❌ Error en búsqueda combinada multi_match y fuzzy:', err.message);
@@ -146,38 +91,92 @@ const multiMatchFuzzySearch = async (req, res) => {
   }
 };
 
-const fuzzySearchByTitle = async (req, res) => {
+
+const getSuggestions = async (req, res) => {
   try {
-    const { title } = req.query;
+    const { query } = req.query;
+    
+    if (!query || query.trim() === '') {
+      return res.status(200).json({ suggestions: [] });
+    }
+
     const response = await esClient.search({
       index: 'books',
-      query: {
-        match: {
-          title: {
-            query: title,
-            fuzziness: "AUTO", // Permite errores tipográficos
-          },
+      body: {
+        suggest: {
+          title_suggestions: {
+            prefix: query.toLowerCase(),
+            completion: {
+              field: 'title_suggest',
+              size: 5,
+              skip_duplicates: true
+            }
+          }
         },
-      },
+        _source: ['title', 'author', '_id', 'coverImageUrl']
+      }
     });
 
-    res.status(200).json(response.hits.hits.map(hit => hit._source));
+    const suggestions = response.suggest?.title_suggestions[0]?.options || [];
+    
+    const mappedSuggestions = suggestions.map(suggestion => ({
+      _id: suggestion._id,
+      title: suggestion._source.title,
+      author: suggestion._source.author,
+      coverImageUrl: suggestion._source.coverImageUrl
+    }));
+
+    res.status(200).json({ suggestions: mappedSuggestions });
   } catch (err) {
-    console.error('❌ Error en búsqueda difusa por título:', err.message);
-    res.status(500).json({ error: 'Error en búsqueda difusa por título.' });
+    console.error('❌ Error obteniendo sugerencias:', err.message);
+    res.status(500).json({ error: 'Error obteniendo sugerencias.' });
   }
 };
 
-
 const getBooks = async (req, res) => {
   try {
-    const books = await Book.find();
-    res.status(200).json(books);
+    const { page = 1, size = 20 } = req.query;
+    const from = (page - 1) * parseInt(size);
+    
+    const response = await esClient.search({
+      index: 'books',
+      from: parseInt(from),
+      size: parseInt(size),
+      _source: true,
+      query: { match_all: {} }
+    });
+    
+    const total = response.hits.total.value;
+    const totalPages = Math.ceil(total / parseInt(size));
+    
+    const results = response.hits.hits.map(hit => ({
+      _id: hit._id,
+      ...hit._source
+    }));
+
+    const availableFormats = await bookService.getAvailableFormats();
+    console.log('📚 Formatos disponibles:', availableFormats);
+
+    res.status(200).json({
+      total,
+      page: parseInt(page),
+      size: parseInt(size),
+      totalPages,
+      results,
+      // Añadir facets con formatos
+      facets: {
+        formats: availableFormats.map(format => ({ 
+          value: format, 
+          count: 0
+        }))
+      }
+    });
+    
   } catch (err) {
     console.error('❌ Error obteniendo libros:', err.message);
     res.status(500).json({ error: 'Error obteniendo libros.' });
   }
-}
+};
 
 
 const getBookById = async (req, res) => {
@@ -242,17 +241,117 @@ const getRelatedBooks = async (req, res) => {
   }
 };
 
+const searchWithFilters = async (req, res) => {
+  try {
+    const { query, genres, minPrice, maxPrice, formats, minYear, maxYear, page = 1 } = req.query;
+    const size = 20;
+    const from = (page - 1) * size;
+    
+    const esQuery = {
+      bool: {
+        must: [],
+        filter: []
+      }
+    };
+    
+    if (query && query.trim()) {
+      esQuery.bool.must.push({
+        multi_match: {
+          query: query.trim(),
+          fields: ['title^5', 'author^4', 'genre^3'],
+          operator: 'and'
+        }
+      });
+    } else {
+      esQuery.bool.must.push({ match_all: {} });
+    }
+    
+    if (genres && genres.trim()) {
+      esQuery.bool.filter.push({
+        bool: {
+          should: genres.split(',').map(g => ({
+            match: {
+              genre: {
+                query: g.trim(),
+                analyzer: 'standard'  // Esto asegura que la comparación es insensible a mayúsculas/minúsculas
+              }
+            }
+          })),
+          minimum_should_match: 1
+        }
+      });
+    }
+    
+    if (minPrice?.trim() || maxPrice?.trim()) {
+      const priceRange = {};
+      if (minPrice?.trim()) priceRange.gte = parseFloat(minPrice);
+      if (maxPrice?.trim()) priceRange.lte = parseFloat(maxPrice);
+      esQuery.bool.filter.push({ range: { price: priceRange } });
+    }
+    
+    if (formats && formats.trim()) {
+      esQuery.bool.filter.push({
+        terms: { format: formats.split(',').map(f => f.trim()) }
+      });
+    }
+    
+    if (minYear?.trim() || maxYear?.trim()) {
+      const yearRange = {};
+      if (minYear?.trim()) yearRange.gte = parseInt(minYear);
+      if (maxYear?.trim()) yearRange.lte = parseInt(maxYear);
+      esQuery.bool.filter.push({ range: { publishedYear: yearRange } });
+    }
+    
+    // Ejecutar la búsqueda en Elasticsearch
+    const response = await esClient.search({
+      index: 'books',
+      from,
+      size,
+      query: esQuery,
+      _source: true
+    });
+    
+    // Obtener resultados
+    const results = response.hits.hits.map(hit => ({
+      _id: hit._id,
+      ...hit._source
+    }));
+    
+    // Calcular paginación
+    const total = response.hits.total.value;
+    const totalPages = Math.ceil(total / size);
+    
+    // Obtener formatos disponibles desde el servicio
+    const availableFormats = await bookService.getAvailableFormats();
+    
+    // Devolver la respuesta
+    res.status(200).json({
+      total,
+      page: parseInt(page),
+      size,
+      totalPages,
+      results,
+      facets: {
+        formats: availableFormats.map(format => ({ 
+          value: format, 
+          count: 0
+        }))
+      }
+    });
+    
+  } catch (err) {
+    console.error('❌ Error en búsqueda con filtros:', err.message);
+    res.status(500).json({ error: 'Error en búsqueda con filtros.' });
+  }
+};
 module.exports = {
   createBook,
   importBooksController,
-  searchByTitle,
-  searchByAuthor,
-  searchByGenre,
-  searchByPriceRange,
   multiMatchFuzzySearch,
-  fuzzySearchByTitle,
   getBooks,
   getBookById,
   getTopBooks,
-  getRelatedBooks
+  getRelatedBooks,
+  getSuggestions,
+  searchWithFilters
 };
