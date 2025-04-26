@@ -232,7 +232,7 @@ const BookCatalog = () => {
 
         <Grid>
           {currentBooks.map(book => (
-            <BookCard to={`/book/${book._id}`} key={book._id} onClick={(e) => e.preventDefault()}>
+            <BookCard to={`/book/${book._id}`} key={book._id}>
               {book.coverImageUrl && <BookImage src={book.coverImageUrl} alt={book.title} />}
               <h3>{book.title}</h3>
               <p><strong>Autor:</strong> {book.author}</p>

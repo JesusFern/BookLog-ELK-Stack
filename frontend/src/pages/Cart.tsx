@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import styled from 'styled-components';
 import Header from '../components/Header';
 import { API_BASE_URL } from '../config';
+import { Link } from 'react-router-dom';
 
 const CartWrapper = styled.div`
   padding: 2rem;
@@ -10,13 +11,15 @@ const CartWrapper = styled.div`
   margin: 0 auto;
 `;
 
-const CartItem = styled.div`
+const CartItem = styled(Link)`
   display: flex;
   align-items: center;
   margin-bottom: 1.5rem;
   padding: 1rem;
   border: 1px solid #ddd;
   border-radius: 8px;
+  text-decoration: none;
+  color: inherit;
 `;
 
 const CartItemImage = styled.img`
@@ -83,7 +86,7 @@ const Cart = () => {
             <p>No tienes libros en el carrito.</p>
         ) : (
             cartItems.map(item => (
-            <CartItem key={item._id}>
+            <CartItem to={`/book/${item._id}`} key={item._id}>
                 <CartItemImage src={item.coverImageUrl} alt={item.title} />
                 <CartDetails>
                 <h3>{item.title}</h3>
@@ -94,6 +97,7 @@ const Cart = () => {
             </CartItem>
             ))
         )}
+
         <CartButton onClick={() => alert('Procesar pago')}>Ir a pagar</CartButton>
         </CartWrapper>
     </>

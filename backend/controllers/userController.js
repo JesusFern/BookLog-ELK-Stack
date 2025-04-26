@@ -198,7 +198,10 @@ const addItemCart = async (req, res) => {
     }
 
     console.log('🛒 Libro añadido al carrito:', savedUser.cart);
-    res.status(200).json({ message: 'Libro añadido al carrito con éxito.', cart: user.cart });
+    res.status(200).json({
+      message: 'Libro añadido al carrito con éxito.',
+      cart: user.cart,
+    });
 
   } catch (err) {
     console.error('❌ Error añadiendo libro al carrito:', err.message);
