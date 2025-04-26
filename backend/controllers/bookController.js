@@ -31,85 +31,6 @@ const importBooksController = async (req, res) => {
   }
 };
 
-const searchByTitle = async (req, res) => {
-  try {
-    const { title } = req.query;
-    const response = await esClient.search({
-      index: 'books',
-      query: {
-        match: {
-          title: title,
-        },
-      },
-    });
-
-    res.status(200).json(response.hits.hits.map(hit => hit._source));
-  } catch (err) {
-    console.error('❌ Error buscando por título:', err.message);
-    res.status(500).json({ error: 'Error buscando por título.' });
-  }
-};
-
-const searchByAuthor = async (req, res) => {
-  try {
-    const { author } = req.query;
-    const response = await esClient.search({
-      index: 'books',
-      query: {
-        match: {
-          author: author, // Busca coincidencias en el campo "author"
-        },
-      },
-    });
-
-    res.status(200).json(response.hits.hits.map(hit => hit._source));
-  } catch (err) {
-    console.error('❌ Error buscando por autor:', err.message);
-    res.status(500).json({ error: 'Error buscando por autor.' });
-  }
-};
-
-const searchByGenre = async (req, res) => {
-  try {
-    const { genre } = req.query;
-    const response = await esClient.search({
-      index: 'books',
-      query: {
-        match: {
-          genre: genre, // Busca coincidencias en el campo "genre"
-        },
-      },
-    });
-
-    res.status(200).json(response.hits.hits.map(hit => hit._source));
-  } catch (err) {
-    console.error('❌ Error buscando por género:', err.message);
-    res.status(500).json({ error: 'Error buscando por género.' });
-  }
-};
-
-const searchByPriceRange = async (req, res) => {
-  try {
-    const { minPrice, maxPrice } = req.query;
-    const response = await esClient.search({
-      index: 'books',
-      query: {
-        range: {
-          price: {
-            gte: parseFloat(minPrice), // Precio mínimo
-            lte: parseFloat(maxPrice), // Precio máximo
-          },
-        },
-      },
-    });
-
-    res.status(200).json(response.hits.hits.map(hit => hit._source));
-  } catch (err) {
-    console.error('❌ Error buscando por rango de precios:', err.message);
-    res.status(500).json({ error: 'Error buscando por rango de precios.' });
-  }
-};
-
 const multiMatchFuzzySearch = async (req, res) => {
   try {
     const { query, page = 1 } = req.query;
@@ -169,27 +90,6 @@ const multiMatchFuzzySearch = async (req, res) => {
   }
 };
 
-const fuzzySearchByTitle = async (req, res) => {
-  try {
-    const { title } = req.query;
-    const response = await esClient.search({
-      index: 'books',
-      query: {
-        match: {
-          title: {
-            query: title,
-            fuzziness: "AUTO", // Permite errores tipográficos
-          },
-        },
-      },
-    });
-
-    res.status(200).json(response.hits.hits.map(hit => hit._source));
-  } catch (err) {
-    console.error('❌ Error en búsqueda difusa por título:', err.message);
-    res.status(500).json({ error: 'Error en búsqueda difusa por título.' });
-  }
-};
 
 const getSuggestions = async (req, res) => {
   try {
@@ -309,12 +209,7 @@ const getRelatedBooks = async (req, res) => {
 module.exports = {
   createBook,
   importBooksController,
-  searchByTitle,
-  searchByAuthor,
-  searchByGenre,
-  searchByPriceRange,
   multiMatchFuzzySearch,
-  fuzzySearchByTitle,
   getBooks,
   getBookById,
   getTopBooks,
