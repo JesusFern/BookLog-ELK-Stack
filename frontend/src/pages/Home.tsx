@@ -42,7 +42,7 @@ const Home = () => {
 
   return (
     <Container>
-      <Title>Bienvenido a la Tienda de Libros 📚</Title>
+      <Title>Bienvenido a BookLog 📚</Title>
       <ButtonGroup>
         <Button onClick={() => navigate('/login')}>Iniciar Sesión</Button>
         <Button onClick={() => navigate('/register')}>Registrarse</Button>
