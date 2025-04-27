@@ -2,7 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { ShoppingCart, User, Home, Shield } from 'lucide-react';
-import { jwtDecode}  from 'jwt-decode';
+import { jwtDecode } from 'jwt-decode';
 
 const HeaderWrapper = styled.header`
   display: flex;
