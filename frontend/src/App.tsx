@@ -9,6 +9,7 @@ import BookDetail from './pages/BookDetail';
 import Cart from './pages/Cart';
 import UserProfile from './pages/UserProfile';
 import AdminDashboard from './components/AdminDashboard';
+import PurchaseSummary from './pages/PurchaseSummary';
 
 function App() {
   return (
@@ -22,6 +23,7 @@ function App() {
         <Route path="/cart" element={<Cart />} />
         <Route path="/user" element={<UserProfile />} />
         <Route path="/admin" element={<AdminDashboard />} />
+        <Route path='/purchase-summary' element={<PurchaseSummary />} />
       </Routes>
     </Router>
   );

@@ -210,6 +210,43 @@ const addItemCart = async (req, res) => {
 }
 
 
+const purchaseBooks = async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ error: 'No autorizado.' });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const userId = decoded.userId;
+
+    const user = await User.findById(userId).populate('cart');
+    if (!user) {
+      return res.status(404).json({ error: 'Usuario no encontrado.' });
+    }
+
+    if (user.cart.length === 0) {
+      return res.status(400).json({ error: 'El carrito está vacío.' });
+    }
+
+    user.purchasedBooks.push(...user.cart);
+    purchasedBooks = user.cart
+    user.cart = [];
+
+    const savedUser = await user.save();
+
+    // Actualizar los índices de Elasticsearch
+    await updateUserInElastic(savedUser);
+    console.log('Libros comprados:', purchasedBooks);
+    res.status(200).json({ message: 'Compra realizada con éxito.', purchasedBooks: purchasedBooks });
+  } catch (err) {
+    console.error('❌ Error realizando la compra:', err.message);
+    res.status(500).json({ error: 'Error realizando la compra.' });
+  }
+};  
+
+
+
 const getTotalUsers = async (req, res) => {
   try {
     const totalUsers = await User.countDocuments();
@@ -228,5 +265,6 @@ module.exports = {
   userDetails,
   getCart,
   addItemCart,
+  purchaseBooks,
   getTotalUsers,
 };

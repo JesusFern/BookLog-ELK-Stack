@@ -1,4 +1,3 @@
-// src/pages/UserProfile.tsx
 import styled from 'styled-components';
 import Header from '../components/Header';
 import React, { useEffect, useState } from 'react';
@@ -35,6 +34,7 @@ const Button = styled.button`
 
 const UserProfile = () => {
   const [user, setUser] = useState<any>(null);
+  const [books, setBooks] = useState<any[]>([]); // Estado para almacenar los libros comprados
   const [loading, setLoading] = useState<boolean>(true);  // Agregar estado de carga
 
   useEffect(() => {
@@ -50,7 +50,25 @@ const UserProfile = () => {
         .then(data => {
           if (data.user) {
             setUser(data.user);
-            setLoading(false);  // Cambiar el estado a false una vez se cargue el usuario
+            // Obtener los detalles de los libros comprados
+            if (data.user.purchasedBooks && data.user.purchasedBooks.length > 0) {
+              Promise.all(
+                data.user.purchasedBooks.map((bookId: string) =>
+                  fetch(`${API_BASE_URL}/api/books/${bookId}`)
+                    .then(res => res.json())
+                    .then(book => book)
+                )
+              ).then(fetchedBooks => {
+                setBooks(fetchedBooks);  // Guardamos los libros en el estado
+                setLoading(false);  // Cambiar el estado a false una vez que los libros estén cargados
+              })
+              .catch(err => {
+                console.error('Error al cargar los libros:', err);
+                setLoading(false);
+              });
+            } else {
+              setLoading(false);  // Si no hay libros comprados, cambiamos el estado a false
+            }
           } else {
             console.error('No se encontró el usuario');
             setLoading(false);  // Cambiar el estado a false si no se encuentra usuario
@@ -78,17 +96,18 @@ const UserProfile = () => {
             <p><strong>Correo electrónico: </strong>{user.email}</p>
             <p><strong>Fecha de registro: </strong>{new Date(user.createdAt).toLocaleDateString()}</p>
             <p>
-                <strong>Libros comprados: </strong>
-                {user.purchasedBooks && user.purchasedBooks.length > 0 ? (
-                  <ul>
-                    {user.purchasedBooks.map((book: any, index: number) => (
-                      <li key={index}>{book.title}</li>
-                    ))}
-                  </ul>
-                ) : (
-                  'No ha comprado libros.'
-                )}
-            
+              <strong>Libros comprados: </strong>
+              {books.length > 0 ? (
+                <ul>
+                  {books.map((book: any, index: number) => (
+                    <li key={index}>
+                      {book.title}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                'No ha comprado libros.'
+              )}
             </p>
           </UserInfo>
         ) : (
