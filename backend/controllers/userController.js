@@ -237,6 +237,15 @@ const purchaseBooks = async (req, res) => {
 
     // Actualizar los índices de Elasticsearch
     await updateUserInElastic(savedUser);
+    for (const purchasedBook of purchasedBooks) {
+      const bookId = purchasedBook._id
+      const book = await Book.findById(bookId);
+      if (book) {
+        book.purchasedCount = book.purchasedCount ? book.purchasedCount + 1 : 1;
+        await book.save();
+        await updateBookInElastic(bookId);
+      }
+    }
     console.log('Libros comprados:', purchasedBooks);
     res.status(200).json({ message: 'Compra realizada con éxito.', purchasedBooks: purchasedBooks });
   } catch (err) {
