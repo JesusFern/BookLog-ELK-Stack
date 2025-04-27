@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import styled from 'styled-components';
 import { API_BASE_URL } from '../config';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
 import SearchSuggestions, { Suggestion } from '../components/SearchSuggestions';
 import BookFilters, { FilterState, FacetsData } from '../components/BookFilters';
@@ -157,6 +157,7 @@ const BookCatalog = () => {
   const [totalPages, setTotalPages] = useState(0);
   const [facets, setFacets] = useState<FacetsData | undefined>(undefined);
   const [activeSearch, setActiveSearch] = useState(false);
+  const navigate = useNavigate();
 
   const [activeFilters, setActiveFilters] = useState<FilterState>({
     genres: [],
@@ -185,6 +186,12 @@ const BookCatalog = () => {
   }, []);
 
   useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      alert('No autorizado.');
+      navigate('/login');
+      return;
+    }
     loadBooks();
   }, []);
 

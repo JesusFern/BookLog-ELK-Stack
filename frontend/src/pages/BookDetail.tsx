@@ -1,6 +1,6 @@
 // src/pages/BookDetail.tsx
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { API_BASE_URL } from '../config';
 import Header from '../components/Header';
@@ -63,8 +63,15 @@ const BookDetail = () => {
   const { id } = useParams();
   const [book, setBook] = useState<Book | null>(null);
   const [relatedBooks, setRelatedBooks] = useState<Book[]>([]); // Estado para libros relacionados
+  const navigate = useNavigate();
 
   useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      alert('No autorizado.');
+      navigate('/login');
+      return;
+    }
     // Obtener detalles del libro
     fetch(`${API_BASE_URL}/api/books/${id}`)
       .then(res => res.json())

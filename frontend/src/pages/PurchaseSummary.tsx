@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useLocation, Link } from 'react-router-dom';
+import { useLocation, Link, useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
 import styled from 'styled-components';
 
@@ -60,8 +60,15 @@ const PurchaseSummary = () => {
   const location = useLocation();
   const { purchaseData } = location.state || {}; // Obtenemos los datos de compra pasados por el `Link`
   const [books, setBooks] = useState<any[]>([]);
+  const navigate = useNavigate();
 
   useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      alert('No autorizado.');
+      navigate('/login');
+      return;
+    }
     if (purchaseData?.purchasedBooks) {
       setBooks(purchaseData.purchasedBooks); // Guardamos los libros de la compra en el estado
     }

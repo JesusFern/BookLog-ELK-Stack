@@ -3,12 +3,20 @@ import { useNavigate } from 'react-router-dom';
 import { Wrapper, Title, Button } from './AuthFormWrapper';
 import { API_BASE_URL } from '../config';
 
+
 const AdminDashboard = () => {
   const navigate = useNavigate();
   const [totalUsers, setTotalUsers] = useState<number>(0);
   const [totalBooks, setTotalBooks] = useState<number>(0);
 
   useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      alert('No autorizado.');
+      navigate('/login');
+      return;
+    }
+
       fetch(`${API_BASE_URL}/api/books/total-books`)
         .then(res => res.json())
         .then(data => setTotalBooks(data.totalBooks))

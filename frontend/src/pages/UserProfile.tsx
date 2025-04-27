@@ -2,6 +2,7 @@ import styled from 'styled-components';
 import Header from '../components/Header';
 import React, { useEffect, useState } from 'react';
 import { API_BASE_URL } from '../config';
+import { useNavigate } from 'react-router-dom';
 
 const ProfileWrapper = styled.div`
   padding: 2rem;
@@ -19,23 +20,26 @@ const UserInfo = styled.div`
 
 const Button = styled.button`
   padding: 0.75rem 1.5rem;
-  background-color: #ffffffcc;
+  background-color: #e74c3c;  // Rojo brillante
+  color: white;
   border: none;
   border-radius: 12px;
   font-weight: bold;
   font-size: 1rem;
   cursor: pointer;
   transition: 0.3s ease;
+  
   &:hover {
-    background-color: #fff;
+    background-color: #c0392b;  // Rojo más oscuro cuando se pasa el ratón
     transform: scale(1.05);
   }
 `;
 
 const UserProfile = () => {
+  const navigate = useNavigate();  
   const [user, setUser] = useState<any>(null);
-  const [books, setBooks] = useState<any[]>([]); // Estado para almacenar los libros comprados
-  const [loading, setLoading] = useState<boolean>(true);  // Agregar estado de carga
+  const [books, setBooks] = useState<any[]>([]); 
+  const [loading, setLoading] = useState<boolean>(true);  
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -50,7 +54,6 @@ const UserProfile = () => {
         .then(data => {
           if (data.user) {
             setUser(data.user);
-            // Obtener los detalles de los libros comprados
             if (data.user.purchasedBooks && data.user.purchasedBooks.length > 0) {
               Promise.all(
                 data.user.purchasedBooks.map((bookId: string) =>
@@ -59,29 +62,37 @@ const UserProfile = () => {
                     .then(book => book)
                 )
               ).then(fetchedBooks => {
-                setBooks(fetchedBooks);  // Guardamos los libros en el estado
-                setLoading(false);  // Cambiar el estado a false una vez que los libros estén cargados
+                setBooks(fetchedBooks);  
+                setLoading(false);  
               })
               .catch(err => {
                 console.error('Error al cargar los libros:', err);
                 setLoading(false);
               });
             } else {
-              setLoading(false);  // Si no hay libros comprados, cambiamos el estado a false
+              setLoading(false);  
             }
           } else {
             console.error('No se encontró el usuario');
-            setLoading(false);  // Cambiar el estado a false si no se encuentra usuario
+            setLoading(false);  
           }
         })
         .catch(err => {
           console.error('Error al cargar el perfil:', err);
-          setLoading(false);  // Cambiar el estado a false si ocurre un error
+          setLoading(false);  
         });
     } else {
-      setLoading(false);  // Cambiar el estado a false si no hay token
+      setLoading(false);
+      alert('No autorizado.');
+      navigate('/login');
+      return;
     }
   }, []);
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');  
+    navigate('/login');  
+  };
 
   return (
     <>
@@ -89,7 +100,7 @@ const UserProfile = () => {
       <ProfileWrapper>
         <h2>Perfil de Usuario</h2>
         {loading ? (
-          <p>Cargando información del usuario...</p>  // Mostrar el mensaje de carga
+          <p>Cargando información del usuario...</p>  
         ) : user ? (
           <UserInfo>
             <p><strong>Nombre de usuario: </strong>{user.name}</p>
@@ -109,9 +120,10 @@ const UserProfile = () => {
                 'No ha comprado libros.'
               )}
             </p>
+            <Button onClick={handleLogout}>Cerrar sesión</Button>
           </UserInfo>
         ) : (
-          <p>No se encontró el usuario.</p>  // Mostrar si no hay usuario
+          <p>No se encontró el usuario.</p>  
         )}
       </ProfileWrapper>
     </>

@@ -57,6 +57,7 @@ const Cart = () => {
 
   useEffect(() => {
     const token = localStorage.getItem('token');
+
     if (token) {
       fetch(`${API_BASE_URL}/api/users/cart`, {
         method: 'GET',
@@ -76,6 +77,10 @@ const Cart = () => {
         .catch(err => {
           console.error('Error al cargar el carrito:', err);
         });
+    } else {
+      alert('No autorizado.');
+      navigate('/login');
+      return;
     }
   }, []);
 
