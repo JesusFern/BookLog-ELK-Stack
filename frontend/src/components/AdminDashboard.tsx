@@ -215,7 +215,7 @@ const AdminDashboard = () => {
         backgroundColor: '#f9f9f9',
         textAlign: 'center'
       }}>
-        <h3>📊 Estadísticas</h3>
+        <h3>📊 Estadísticas MongoDB</h3>
         <p><strong>Usuarios:</strong> {totalUsers}</p>
         <p><strong>Libros:</strong> {totalBooks}</p>
       </div>

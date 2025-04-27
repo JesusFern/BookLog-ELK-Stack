@@ -4,6 +4,7 @@ const importBooks = require('../services/importBooksService');
 const { indexBook } = require('../services/elasticBookService');
 const bookService = require('../services/bookService');
 const { exec } = require('child_process');
+const jwt = require('jsonwebtoken');
 
 // Crear un libro
 const createBook = async (req, res) => {

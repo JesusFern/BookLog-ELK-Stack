@@ -2,6 +2,7 @@ const Book = require('../models/book');
 const User = require('../models/user');
 const { createBooksIndex, bulkIndexBooks } = require('../services/elasticBookService');
 const { createUsersIndex, bulkIndexUsers } = require('../services/elasticUserService');
+const jwt = require('jsonwebtoken');
 
 const syncElasticWithMongoBooks = async (req, res) => {
   try {
