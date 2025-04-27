@@ -42,7 +42,7 @@ const AdminDashboard = () => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify({ shouldDelete: true }),
+        body: JSON.stringify({ shouldDelete: false }),
       });
 
       if (!response.ok) {
@@ -180,11 +180,11 @@ const AdminDashboard = () => {
   return (
     <Wrapper>
       <Title>Panel de Administrador</Title>
-{/*
+
       <Button onClick={populateUsers} style={{ marginBottom: '10px' }}>
         Poblar Usuarios
       </Button>
-*/}
+
       <Button onClick={importBooks} style={{ marginBottom: '10px' }}>
         Importar Libros
       </Button>
