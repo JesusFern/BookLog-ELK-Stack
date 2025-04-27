@@ -25,6 +25,7 @@ const importBooksController = async (req, res) => {
   try {
     const { shouldDelete } = req.body; // Obtén el parámetro desde el cuerpo de la solicitud
     console.log(`📚 Iniciando importación de libros... (shouldDelete: ${shouldDelete})`);
+    const token = req.headers.authorization?.split(' ')[1];
     
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     if (!decoded.isAdmin) {
