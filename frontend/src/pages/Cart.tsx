@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import styled from 'styled-components';
 import Header from '../components/Header';
 import { API_BASE_URL } from '../config';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 const CartWrapper = styled.div`
   padding: 2rem;
@@ -53,8 +53,11 @@ const CartButton = styled.button`
 const Cart = () => {
   const [cartItems, setCartItems] = useState<any[]>([]);
 
+  const navigate = useNavigate();
+
   useEffect(() => {
     const token = localStorage.getItem('token');
+
     if (token) {
       fetch(`${API_BASE_URL}/api/users/cart`, {
         method: 'GET',
@@ -74,8 +77,44 @@ const Cart = () => {
         .catch(err => {
           console.error('Error al cargar el carrito:', err);
         });
+    } else {
+      alert('No autorizado.');
+      navigate('/login');
+      return;
     }
   }, []);
+
+
+  const handlePurchase = async () => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      alert('Debes iniciar sesión para comprar.');
+      return;
+    }
+  
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/users/cart/purchase`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+  
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Compra realizada:', data);
+        navigate('/purchase-summary', { state: { purchaseData: data } });
+      } else {
+        const errorData = await response.json();
+        console.error('Error al realizar la compra:', errorData);
+        alert('Hubo un error al procesar la compra.');
+      }
+    } catch (err) {
+      console.error('Error de red:', err);
+      alert('Error de red al intentar comprar.');
+    }
+  };
 
   return (
     <>
@@ -98,7 +137,7 @@ const Cart = () => {
             ))
         )}
 
-        <CartButton onClick={() => alert('Procesar pago')}>Ir a pagar</CartButton>
+        <CartButton onClick={handlePurchase}>Comprar</CartButton>
         </CartWrapper>
     </>
   );

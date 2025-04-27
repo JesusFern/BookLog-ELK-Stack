@@ -5,8 +5,17 @@ const { createUsersIndex, bulkIndexUsers } = require('../services/elasticUserSer
 
 const syncElasticWithMongoBooks = async (req, res) => {
   try {
-    await createBooksIndex();
+    const token = req.headers.authorization?.split(' ')[1]; // Obtener el token del header Authorization
+    if (!token) {
+      return res.status(401).json({ error: 'No autorizado.' });
+    }
 
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    if (!decoded.isAdmin) {
+      return res.status(403).json({ error: 'Acceso denegado. No eres administrador.' });
+    }
+
+    await createBooksIndex();
     const books = await Book.find();
     await bulkIndexBooks(books);
 
@@ -19,8 +28,17 @@ const syncElasticWithMongoBooks = async (req, res) => {
 
 const syncElasticWithMongoUsers = async (req, res) => {
   try {
-    await createUsersIndex();
+    const token = req.headers.authorization?.split(' ')[1]; // Obtener el token del header Authorization
+    if (!token) {
+      return res.status(401).json({ error: 'No autorizado.' });
+    }
 
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    if (!decoded.isAdmin) {
+      return res.status(403).json({ error: 'Acceso denegado. No eres administrador.' });
+    }
+
+    await createUsersIndex();
     const users = await User.find().populate('purchasedBooks');
     await bulkIndexUsers(users);
 

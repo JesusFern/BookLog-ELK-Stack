@@ -9,14 +9,14 @@ const populateUsers = require('../utils/populateUsers');
 
 const registerUser = async (req, res) => {
   try {
-    const { name, email, password } = req.body;
+    const { name, email, password, isAdmin } = req.body;
 
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).json({ error: 'El correo ya está registrado.' });
     }
 
-    const user = new User({ name, email, password });
+    const user = new User({ name, email, password, isAdmin: isAdmin || false });
     const savedUser = await user.save();
 
     // Indexar el usuario en Elasticsearch
@@ -43,7 +43,7 @@ const loginUser = async (req, res) => {
       return res.status(400).json({ error: 'Credenciales inválidas.' });
     }
 
-    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+    const token = jwt.sign({ userId: user._id, isAdmin: user.isAdmin }, process.env.JWT_SECRET, { expiresIn: '1h' });
 
     res.status(200).json({ token });
   } catch (err) {
@@ -209,6 +209,63 @@ const addItemCart = async (req, res) => {
   }
 }
 
+
+const purchaseBooks = async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ error: 'No autorizado.' });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const userId = decoded.userId;
+
+    const user = await User.findById(userId).populate('cart');
+    if (!user) {
+      return res.status(404).json({ error: 'Usuario no encontrado.' });
+    }
+
+    if (user.cart.length === 0) {
+      return res.status(400).json({ error: 'El carrito está vacío.' });
+    }
+
+    user.purchasedBooks.push(...user.cart);
+    purchasedBooks = user.cart
+    user.cart = [];
+
+    const savedUser = await user.save();
+
+    // Actualizar los índices de Elasticsearch
+    await updateUserInElastic(savedUser);
+    for (const purchasedBook of purchasedBooks) {
+      const bookId = purchasedBook._id
+      const book = await Book.findById(bookId);
+      if (book) {
+        book.purchasedCount = book.purchasedCount ? book.purchasedCount + 1 : 1;
+        await book.save();
+        await updateBookInElastic(bookId);
+      }
+    }
+    console.log('Libros comprados:', purchasedBooks);
+    res.status(200).json({ message: 'Compra realizada con éxito.', purchasedBooks: purchasedBooks });
+  } catch (err) {
+    console.error('❌ Error realizando la compra:', err.message);
+    res.status(500).json({ error: 'Error realizando la compra.' });
+  }
+};  
+
+
+
+const getTotalUsers = async (req, res) => {
+  try {
+    const totalUsers = await User.countDocuments();
+    res.status(200).json({ totalUsers });
+  } catch (err) {
+    console.error('❌ Error obteniendo el total de usuarios:', err.message);
+    res.status(500).json({ error: 'Error obteniendo el total de usuarios.' });
+  }
+};
+
 module.exports = {
   registerUser,
   loginUser,
@@ -217,4 +274,6 @@ module.exports = {
   userDetails,
   getCart,
   addItemCart,
+  purchaseBooks,
+  getTotalUsers,
 };
